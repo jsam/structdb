@@ -125,7 +125,8 @@ mod tests {
     fn test_stream_iterator() {
         let _ = fs::remove_dir_all("test_stream_iterator.db");
 
-        let mut _db = Database::open("test_stream_iterator.db", &DBOptions::default()).unwrap();
+        let orig = Database::open("test_stream_iterator.db", &DBOptions::default()).unwrap();
+        let _db = orig.clone();
         let _ = _db.create_cf("0");
 
         let metadata = ByteID::metadata();
@@ -150,7 +151,8 @@ mod tests {
             format!("iterator=123").as_bytes(),
         );
 
-        let snapshot = DatabaseSnapshot::new(&_db, "0");
+        let new_db = orig.clone();
+        let snapshot = DatabaseSnapshot::new(&new_db, "0");
         assert!(snapshot.is_ok());
 
         let raw_snapshot = snapshot.unwrap();
