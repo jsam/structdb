@@ -1,3 +1,3 @@
 # WAL-S
 
-Is an implementation of Write-Ahead Log with full storage support.
+Is an implementation of write-ahead log with full storage support.
