@@ -5,22 +5,29 @@ use serde::{Deserialize, Serialize};
 pub const IDENTIFIER_SIZE: usize = mem::size_of::<u64>();
 
 #[derive(Serialize, Deserialize, Clone, Hash, PartialEq, Eq)]
-pub struct ByteID {
+pub struct StreamID {
     id: [u8; IDENTIFIER_SIZE],
+
+    #[serde(skip_serializing, skip_deserializing)]
+    pub valid: bool,
 }
 
-impl Default for ByteID {
+impl Default for StreamID {
     fn default() -> Self {
         let mut id = [0; IDENTIFIER_SIZE];
         id[IDENTIFIER_SIZE - 1] = 1;
 
-        Self { id: id }
+        Self {
+            id: id,
+            valid: true,
+        }
     }
 }
 
-impl ToString for ByteID {
+impl ToString for StreamID {
     fn to_string(&self) -> String {
-        self.id
+        let _id = self
+            .id
             .map(|b| {
                 if b < 10 {
                     return format!("00{}", b);
@@ -33,13 +40,33 @@ impl ToString for ByteID {
                 format!("{}", b)
             })
             .to_vec()
-            .join("")
+            .join("");
+
+        format!("stream-{0}", _id)
     }
 }
 
-impl From<&str> for ByteID {
+impl From<&str> for StreamID {
     fn from(key: &str) -> Self {
-        let _bytes = key
+        let mut parts = key.split("-");
+        let stream_part = parts.next();
+        if stream_part.is_none() || stream_part.unwrap() != "stream" {
+            return Self {
+                valid: false,
+                ..Default::default()
+            };
+        }
+
+        let id_part = parts.next();
+        if id_part.is_none() {
+            return Self {
+                valid: false,
+                ..Default::default()
+            };
+        }
+
+        let _bytes = id_part
+            .unwrap()
             .chars()
             .collect::<Vec<char>>()
             .chunks(3)
@@ -49,20 +76,24 @@ impl From<&str> for ByteID {
         let mut mem_id = [0x0_u8; IDENTIFIER_SIZE];
         mem_id.clone_from_slice(_bytes.as_ref());
 
-        Self { id: mem_id }
+        Self {
+            id: mem_id,
+            valid: true,
+        }
     }
 }
 
-impl From<Box<[u8]>> for ByteID {
+impl From<Box<[u8]>> for StreamID {
     fn from(key: Box<[u8]>) -> Self {
-        return ByteID::from(String::from_utf8_lossy(&key).as_ref());
+        return StreamID::from(String::from_utf8_lossy(&key).as_ref());
     }
 }
 
-impl ByteID {
+impl StreamID {
     pub fn metadata() -> Self {
         Self {
             id: [0; IDENTIFIER_SIZE],
+            valid: true,
         }
     }
 
@@ -85,13 +116,16 @@ impl ByteID {
             }
         }
 
-        Self { id: next_id }
+        Self {
+            id: next_id,
+            valid: true,
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::id::{ByteID, IDENTIFIER_SIZE};
+    use crate::id::{StreamID, IDENTIFIER_SIZE};
 
     #[test]
     fn test_byte_id() {
@@ -100,11 +134,11 @@ mod tests {
         }
 
         {
-            assert_eq!(ByteID::default().id, [0, 0, 0, 0, 0, 0, 0, 1]);
+            assert_eq!(StreamID::default().id, [0, 0, 0, 0, 0, 0, 0, 1]);
         }
 
         {
-            let mut bid = ByteID::default();
+            let mut bid = StreamID::default();
 
             let next_bid = bid.next();
             assert_eq!(next_bid.id, [0, 0, 0, 0, 0, 0, 0, 2]);
@@ -122,14 +156,14 @@ mod tests {
         }
 
         {
-            let mut bid = ByteID::default();
+            let mut bid = StreamID::default();
             for _ in 0..1e+6 as u64 {
                 bid = bid.next();
             }
 
-            assert_eq!("000000000000000015066065", bid.to_string());
+            assert_eq!("stream-000000000000000015066065", bid.to_string());
 
-            let _bid: ByteID = ByteID::from("000000000000000015066065");
+            let _bid: StreamID = StreamID::from("stream-000000000000000015066065");
             assert_eq!(bid.to_string(), _bid.to_string());
         }
     }

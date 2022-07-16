@@ -1,24 +1,31 @@
 use std::sync::Arc;
 
-use rocksdb::{BoundColumnFamily, Direction, IteratorMode};
+use rocksdb::BoundColumnFamily;
 
-use crate::{database::Database, id::ByteID, iterator::StreamIterator};
+use crate::{
+    database::Database,
+    errors::Result,
+    id::StreamID,
+    iterators::{IteratorState, IteratorType, StreamIterator},
+};
 
 /// A snapshot of `Database` with specified column family.
 pub struct DatabaseSnapshot<'a> {
-    name: &'a str,
-    column_family: Arc<BoundColumnFamily<'a>>,
-    snapshot: rocksdb::Snapshot<'a>,
+    pub cf_name: &'a str,
+    pub db: &'a Database,
+    pub column_family: Arc<BoundColumnFamily<'a>>,
+    pub snapshot: rocksdb::Snapshot<'a>,
 }
 
 /// Implementation of `DBSnapshot` type.
 impl<'a> DatabaseSnapshot<'a> {
-    pub fn new(db: &'a Database, cf_name: &'a str) -> crate::Result<Self> {
+    pub fn new(db: &'a Database, cf_name: &'a str) -> Result<Self> {
         db.db
             .cf_handle(cf_name)
             .map(|result| {
                 return Self {
-                    name: cf_name,
+                    cf_name,
+                    db,
                     column_family: result.clone(),
                     snapshot: db.db.snapshot(),
                 };
@@ -26,13 +33,21 @@ impl<'a> DatabaseSnapshot<'a> {
             .ok_or_else(|| "column family not found".to_string())
     }
 
-    pub fn iter(&self, from: &ByteID) -> StreamIterator {
-        let iter = self.snapshot.iterator_cf(
-            &self.column_family,
-            IteratorMode::From(from.to_string().as_bytes(), Direction::Forward),
-        );
+    // Stateless iterator.
+    pub fn iter(&self, from: &StreamID) -> StreamIterator {
+        StreamIterator::new(self, IteratorType::Stateless(from.clone()))
+    }
 
-        StreamIterator::new(self.name, iter, from)
+    pub fn set(&self, key: &str, value: &[u8]) -> crate::errors::Result<()> {
+        todo!()
+    }
+
+    // Statefull iterator.
+    pub fn siter(&self, name: String) -> crate::errors::Result<StreamIterator> {
+        let iter_state = IteratorState::get(self, name.clone())?;
+        let iter = StreamIterator::new(self, IteratorType::Statefull(iter_state));
+
+        Ok(iter)
     }
 }
 
@@ -42,7 +57,7 @@ mod tests {
 
     use crate::{
         database::{DBOptions, Database},
-        id::ByteID,
+        id::StreamID,
     };
 
     use super::DatabaseSnapshot;
@@ -56,7 +71,7 @@ mod tests {
         let _ = db.create_cf(cf_name);
 
         let snap = DatabaseSnapshot::new(&db, cf_name).unwrap();
-        assert_eq!(snap.name, "stream1");
+        assert_eq!(snap.cf_name, "stream1");
     }
 
     #[test]
@@ -66,14 +81,14 @@ mod tests {
         let _db = Database::open("test_snapshot_iteration.db", &DBOptions::default()).unwrap();
         let _ = _db.create_cf("0");
 
-        let metadata = ByteID::metadata();
+        let metadata = StreamID::metadata();
         let _ = _db.set(
             "0",
             metadata.to_string().as_str(),
             format!("head=000").as_bytes(),
         );
 
-        let mut start = ByteID::default();
+        let mut start = StreamID::default();
         for i in 0..1e3 as u32 {
             let _ = _db.set(
                 "0",
@@ -92,7 +107,7 @@ mod tests {
         assert!(snapshot.is_ok());
 
         let raw_snapshot = snapshot.unwrap();
-        let iter = raw_snapshot.iter(&ByteID::default());
+        let iter = raw_snapshot.iter(&StreamID::default());
 
         let mut count: u32 = 0;
         for (key, value) in iter.raw_iter {

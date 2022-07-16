@@ -1,13 +1,12 @@
 pub mod database;
+pub mod errors;
 pub mod id;
-pub mod iterator;
+pub mod iterators;
 pub mod record;
 pub mod serialization;
 pub mod snapshot;
 pub mod stream;
 pub mod timestamped;
-
-type Result<I> = std::result::Result<I, String>;
 
 #[cfg(test)]
 mod tests {

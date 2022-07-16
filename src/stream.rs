@@ -1,10 +1,11 @@
+use crate::errors::Result;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    database::Database, id::ByteID, iterator::StreamIteratorMeta, serialization::BinCode,
+    database::Database, id::StreamID, serialization::BinCode,
     snapshot::DatabaseSnapshot,
 };
-use std::{collections::HashMap, rc::Rc};
+use std::rc::Rc;
 
 /*
     Streamly::new("stream1", database)
@@ -18,24 +19,22 @@ use std::{collections::HashMap, rc::Rc};
 */
 trait Stream {
     /// Return all stream in a database.
-    fn all(&self) -> crate::Result<Vec<String>>;
+    fn all(&self) -> Result<Vec<String>>;
 
     /// Set arbitrary key with value to a `Stream`.
-    fn set(&mut self, key: &str, value: &[u8]) -> crate::Result<()>;
+    fn set(&mut self, key: &str, value: &[u8]) -> Result<()>;
 
     /// Get arbitrary key from a `Stream`.
-    fn get(&self, key: &str) -> Option<Vec<u8>>;
+    fn get(&self, key: &str) -> Result<Option<Vec<u8>>>;
 
     /// Append an item to the `Stream`.
-    fn append(&mut self, value: &[u8]) -> crate::Result<()>;
+    fn append(&mut self, value: &[u8]) -> Result<()>;
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct StreamlyMetadata {
     stream_name: String,
-    last_insert: ByteID,
-    iterators: HashMap<String, StreamIteratorMeta>,
-    data: HashMap<String, Vec<u8>>,
+    last_insert: StreamID,
 }
 
 impl BinCode for StreamlyMetadata {}
@@ -45,8 +44,6 @@ impl Default for StreamlyMetadata {
         Self {
             stream_name: Default::default(),
             last_insert: Default::default(),
-            iterators: Default::default(),
-            data: Default::default(),
         }
     }
 }
@@ -65,7 +62,7 @@ pub struct Streamly {
 }
 
 impl Streamly {
-    fn new(name: &str, db: &Rc<Database>) -> crate::Result<Self> {
+    fn new(name: &str, db: &Rc<Database>) -> Result<Self> {
         let database = db.clone();
         match database.cf_exists(name) {
             true => {
@@ -85,39 +82,27 @@ impl Streamly {
         }
     }
 
-    fn snapshot(&self) -> crate::Result<DatabaseSnapshot> {
+    fn snapshot(&self) -> Result<DatabaseSnapshot> {
         DatabaseSnapshot::new(&self.database, &self.metadata.stream_name)
     }
 }
 
 impl Stream for Streamly {
-    fn all(&self) -> crate::Result<Vec<String>> {
+    fn all(&self) -> Result<Vec<String>> {
         let _db = &self.database;
         let result = _db.list_cf()?;
         Ok(result)
     }
 
-    fn set(&mut self, key: &str, value: &[u8]) -> crate::Result<()> {
-        let mut _metadata = self.metadata.clone();
-        _metadata.data.insert(key.to_owned(), value.to_owned());
-
-        let result = self
-            .database
-            .set_metadata(&self.metadata.stream_name, _metadata.clone());
-
-        self.metadata = _metadata;
-        result
+    fn set(&mut self, key: &str, value: &[u8]) -> Result<()> {
+        self.database.set(&self.metadata.stream_name, key, value)
     }
 
-    fn get(&self, key: &str) -> Option<Vec<u8>> {
-        let _metadata = &self.metadata;
-        match _metadata.data.get(&key.to_owned()) {
-            Some(data) => Some(data.to_owned()),
-            None => None,
-        }
+    fn get(&self, key: &str) -> Result<Option<Vec<u8>>> {
+        self.database.get(&self.metadata.stream_name, key)
     }
 
-    fn append(&mut self, value: &[u8]) -> crate::Result<()> {
+    fn append(&mut self, value: &[u8]) -> Result<()> {
         let _db = &self.database;
         self.metadata.last_insert = self.metadata.last_insert.next();
 
@@ -135,7 +120,7 @@ mod tests {
 
     use crate::{
         database::{DBOptions, Database},
-        id::ByteID,
+        id::StreamID,
         stream::StreamlyMetadata,
         timestamped::{epoch_ns, epoch_secs},
     };
@@ -158,10 +143,8 @@ mod tests {
             assert_eq!(stream_unroll.metadata.stream_name, "my-stream".to_string());
             assert_eq!(
                 stream_unroll.metadata.last_insert.to_string(),
-                ByteID::default().to_string()
+                StreamID::default().to_string()
             );
-            assert!(stream_unroll.metadata.iterators.is_empty());
-            assert!(stream_unroll.metadata.data.is_empty());
         }
 
         {
@@ -176,10 +159,8 @@ mod tests {
             assert_eq!(stream_unroll.metadata.stream_name, "my-stream".to_string());
             assert_eq!(
                 stream_unroll.metadata.last_insert.to_string(),
-                ByteID::default().to_string()
+                StreamID::default().to_string()
             );
-            assert!(stream_unroll.metadata.iterators.is_empty());
-            assert!(stream_unroll.metadata.data.is_empty());
         }
     }
 
@@ -199,10 +180,8 @@ mod tests {
             assert_eq!(stream_unroll.metadata.stream_name, "my-stream".to_string());
             assert_eq!(
                 stream_unroll.metadata.last_insert.to_string(),
-                ByteID::default().to_string()
+                StreamID::default().to_string()
             );
-            assert!(stream_unroll.metadata.iterators.is_empty());
-            assert!(stream_unroll.metadata.data.is_empty());
         }
 
         let db = Database::open("test_stream_iter.db", &DBOptions::default()).unwrap();
@@ -216,7 +195,7 @@ mod tests {
         stream
             .snapshot()
             .unwrap()
-            .iter(&ByteID::default())
+            .iter(&StreamID::default())
             .for_each(|record| {
                 println!("record={:?}", record.value);
 
@@ -241,10 +220,8 @@ mod tests {
             assert_eq!(stream_unroll.metadata.stream_name, "my-stream".to_string());
             assert_eq!(
                 stream_unroll.metadata.last_insert.to_string(),
-                ByteID::default().to_string()
+                StreamID::default().to_string()
             );
-            assert!(stream_unroll.metadata.iterators.is_empty());
-            assert!(stream_unroll.metadata.data.is_empty());
         }
 
         let db = Database::open("test_stream_iter_perf.db", &DBOptions::default()).unwrap();

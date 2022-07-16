@@ -5,7 +5,7 @@ use rocksdb::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{id::ByteID, serialization::BinCode, stream::StreamlyMetadata};
+use crate::{errors::Result, id::StreamID, serialization::BinCode, stream::StreamlyMetadata};
 
 #[derive(Serialize, Deserialize)]
 #[serde(remote = "rocksdb::DBCompressionType")]
@@ -72,7 +72,7 @@ pub struct Database {
 
 impl Database {
     /// Creates a database object and corresponding filesystem elements.
-    pub fn open<P: AsRef<Path>>(path: P, options: &DBOptions) -> crate::Result<Rc<Self>> {
+    pub fn open<P: AsRef<Path>>(path: P, options: &DBOptions) -> Result<Rc<Self>> {
         let _db = match rocksdb::DB::list_cf(&rocksdb::Options::default(), &path) {
             Ok(cf_names) => Self {
                 // NOTE: Database files exists, sourcing all CFs.
@@ -89,12 +89,12 @@ impl Database {
         Ok(Rc::new(_db))
     }
 
-    pub fn list_cf(&self) -> crate::Result<Vec<String>> {
+    pub fn list_cf(&self) -> Result<Vec<String>> {
         let result = rocksdb::DB::list_cf(&rocksdb::Options::default(), self.db.path())?;
         Ok(result)
     }
 
-    pub fn get_cf(&self, name: &str) -> crate::Result<Arc<BoundColumnFamily>> {
+    pub fn get_cf(&self, name: &str) -> Result<Arc<BoundColumnFamily>> {
         self.db
             .cf_handle(name)
             .ok_or_else(|| "column family does not exists".to_string())
@@ -106,7 +106,7 @@ impl Database {
     }
 
     /// Creates new column family.
-    pub fn create_cf(&self, name: &str) -> crate::Result<()> {
+    pub fn create_cf(&self, name: &str) -> Result<()> {
         self.db
             .create_cf(name, &rocksdb::Options::from(&self.options))?;
 
@@ -114,26 +114,26 @@ impl Database {
     }
 
     /// Drop column family with a given name.
-    pub fn drop_cf(&self, name: &str) -> crate::Result<()> {
+    pub fn drop_cf(&self, name: &str) -> Result<()> {
         self.db.drop_cf(name).map_err(Into::into)
     }
 
     /// Set specified key value.
-    pub fn set(&self, cf_name: &str, key: &str, value: &[u8]) -> crate::Result<()> {
+    pub fn set(&self, cf_name: &str, key: &str, value: &[u8]) -> Result<()> {
         self.db
             .put_cf(&self.get_cf(cf_name)?, key, value)
             .map_err(Into::into)
     }
 
     /// Get specified key.
-    pub fn get(&self, cf_name: &str, key: &str) -> crate::Result<Option<Vec<u8>>> {
+    pub fn get(&self, cf_name: &str, key: &str) -> Result<Option<Vec<u8>>> {
         self.db
             .get_cf(&self.get_cf(cf_name)?, key)
             .map_err(Into::into)
     }
 
     /// Delete specified key.
-    pub fn delete(&self, cf_name: &str, key: &str) -> crate::Result<()> {
+    pub fn delete(&self, cf_name: &str, key: &str) -> Result<()> {
         self.db
             .delete_cf(&self.get_cf(cf_name)?, key)
             .map_err(Into::into)
@@ -143,7 +143,7 @@ impl Database {
     pub fn read_cf(
         &self,
         cf_name: &str,
-    ) -> crate::Result<DBIteratorWithThreadMode<DBWithThreadMode<MultiThreaded>>> {
+    ) -> Result<DBIteratorWithThreadMode<DBWithThreadMode<MultiThreaded>>> {
         let iter = self
             .db
             .iterator_cf(&self.get_cf(cf_name)?, IteratorMode::Start);
@@ -151,22 +151,18 @@ impl Database {
         Ok(iter)
     }
 
-    pub(super) fn get_metadata(&self, cf_name: &str) -> crate::Result<StreamlyMetadata> {
-        if let Some(record) = self.get(cf_name, ByteID::metadata().to_string().as_str())? {
+    pub(super) fn get_metadata(&self, cf_name: &str) -> Result<StreamlyMetadata> {
+        if let Some(record) = self.get(cf_name, StreamID::metadata().to_string().as_str())? {
             Ok(StreamlyMetadata::from_byte_vec(record.as_slice())?)
         } else {
             Err("record not found".to_string())
         }
     }
 
-    pub(super) fn set_metadata(
-        &self,
-        cf_name: &str,
-        metadata: StreamlyMetadata,
-    ) -> crate::Result<()> {
+    pub(super) fn set_metadata(&self, cf_name: &str, metadata: StreamlyMetadata) -> Result<()> {
         self.set(
             cf_name,
-            ByteID::metadata().to_string().as_str(),
+            StreamID::metadata().to_string().as_str(),
             metadata.to_byte_vec()?.as_slice(),
         )
     }

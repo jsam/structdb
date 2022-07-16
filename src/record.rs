@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-use crate::id::ByteID;
+use crate::id::StreamID;
 
 #[derive(Serialize, Deserialize, Clone, Hash, PartialEq, Eq)]
 pub struct StreamRecord {
-    pub key: ByteID,
+    pub key: StreamID,
     pub value: Box<[u8]>,
 }
 
@@ -23,9 +23,9 @@ impl ToString for StreamRecord {
 }
 
 impl StreamRecord {
-    pub fn new(key: Box<[u8]>, value: Box<[u8]>) -> Self {
+    pub fn new(key: StreamID, value: Box<[u8]>) -> Self {
         Self {
-            key: ByteID::from(key),
+            key: key,
             value: value,
         }
     }
