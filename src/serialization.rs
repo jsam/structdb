@@ -1,7 +1,8 @@
+use crate::errors::Result;
 use serde::{Deserialize, Serialize};
 
 pub trait BinCode {
-    fn to_byte_vec(&self) -> crate::Result<Vec<u8>>
+    fn to_byte_vec(&self) -> Result<Vec<u8>>
     where
         Self: Serialize,
     {
@@ -11,7 +12,7 @@ pub trait BinCode {
         }
     }
 
-    fn from_byte_vec<'de>(encoded: &'de [u8]) -> crate::Result<Self>
+    fn from_byte_vec<'de>(encoded: &'de [u8]) -> Result<Self>
     where
         Self: Deserialize<'de>,
     {
