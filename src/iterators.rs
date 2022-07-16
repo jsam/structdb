@@ -49,7 +49,7 @@ impl IteratorState {
 #[derive(Clone)]
 pub enum IteratorType {
     Stateless(StreamID),
-    Statefull(IteratorState),
+    Stateful(IteratorState),
 }
 
 /// An iterator over the entries of a `Stream`.
@@ -80,7 +80,7 @@ impl<'a> StreamIterator<'a> {
                     iter_type: IteratorType::Stateless(stream_id.clone()),
                 }
             }
-            IteratorType::Statefull(state) => {
+            IteratorType::Stateful(state) => {
                 let raw_iter = snapshot.snapshot.iterator_cf(
                     &snapshot.column_family,
                     IteratorMode::From(state.from.to_string().as_bytes(), Direction::Forward),
@@ -91,7 +91,7 @@ impl<'a> StreamIterator<'a> {
                     raw_iter,
                     current: None,
                     ended: false,
-                    iter_type: IteratorType::Statefull(state),
+                    iter_type: IteratorType::Stateful(state),
                 }
             }
         }
@@ -118,10 +118,10 @@ impl<'a> Iterator for StreamIterator<'a> {
                 let record = StreamRecord::new(key, value);
                 self.current = Some(record.clone());
 
-                if let IteratorType::Statefull(state) = &self.iter_type {
+                if let IteratorType::Stateful(state) = &self.iter_type {
                     // TODO: Implement proper error handling and remove `unwrap`.
                     let new_state = state.set(self.snapshot, record.key.clone()).unwrap();
-                    self.iter_type = IteratorType::Statefull(new_state);
+                    self.iter_type = IteratorType::Stateful(new_state);
                 }
 
                 return Some(record);
