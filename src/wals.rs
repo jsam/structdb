@@ -7,17 +7,7 @@ use crate::{
 };
 use std::rc::Rc;
 
-/*
-    Streamly::new("stream1", database)
-        .snapshot()
-        .iter("iterator1", Iter::Begin)
-        .for_each(|record| {
-            let stream2 = Stream::from("stream1-model1-inferences", config);
-            let result = infer(record);
-            stream2.append(result);
-        })
-*/
-trait Stream {
+trait WAL {
     /// Return all stream in a database.
     fn all(&self) -> Result<Vec<String>>;
 
@@ -32,14 +22,14 @@ trait Stream {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct StreamlyMetadata {
+pub struct WALMetadata {
     stream_name: String,
     last_insert: StreamID,
 }
 
-impl BinCode for StreamlyMetadata {}
+impl BinCode for WALMetadata {}
 
-impl Default for StreamlyMetadata {
+impl Default for WALMetadata {
     fn default() -> Self {
         Self {
             stream_name: Default::default(),
@@ -48,7 +38,7 @@ impl Default for StreamlyMetadata {
     }
 }
 
-impl StreamlyMetadata {
+impl WALMetadata {
     fn new(name: &str) -> Self {
         let mut default = Self::default();
         default.stream_name = name.to_string();
@@ -56,12 +46,12 @@ impl StreamlyMetadata {
     }
 }
 
-pub struct Streamly {
+pub struct WALS {
     database: Rc<Database>,
-    pub metadata: StreamlyMetadata,
+    pub metadata: WALMetadata,
 }
 
-impl Streamly {
+impl WALS {
     fn new(name: &str, db: &Rc<Database>) -> Result<Self> {
         let database = db.clone();
         match database.cf_exists(name) {
@@ -72,7 +62,7 @@ impl Streamly {
                 Ok(result)
             }
             false => {
-                let metadata = StreamlyMetadata::new(name);
+                let metadata = WALMetadata::new(name);
                 let _ = database.create_cf(name)?;
                 let _ = database.set_metadata(name, metadata.clone())?;
 
@@ -87,7 +77,7 @@ impl Streamly {
     }
 }
 
-impl Stream for Streamly {
+impl WAL for WALS {
     fn all(&self) -> Result<Vec<String>> {
         let _db = &self.database;
         let result = _db.list_cf()?;
@@ -121,22 +111,22 @@ mod tests {
     use crate::{
         database::{DBOptions, Database},
         id::StreamID,
-        stream::StreamlyMetadata,
+        wals::WALMetadata,
         timestamped::{epoch_ns, epoch_secs},
     };
 
-    use super::{Stream, Streamly};
+    use super::{WAL, WALS};
 
     #[test]
-    fn test_streamly_new() {
-        let _ = fs::remove_dir_all("test_streamly_new.db");
+    fn test_wals_new() {
+        let _ = fs::remove_dir_all("test_wals_new.db");
 
         {
             // NOTE: Check fresh storage setup.
-            let db = Database::open("test_streamly_new.db", &DBOptions::default()).unwrap();
+            let db = Database::open("test_wals_new.db", &DBOptions::default()).unwrap();
             assert!(!db.cf_exists("my-stream"));
 
-            let stream = Streamly::new("my-stream", &db);
+            let stream = WALS::new("my-stream", &db);
             assert!(stream.is_ok());
 
             let stream_unroll = stream.unwrap();
@@ -149,10 +139,10 @@ mod tests {
 
         {
             // NOTE: Check reading from storage.
-            let db = Database::open("test_streamly_new.db", &DBOptions::default()).unwrap();
+            let db = Database::open("test_wals_new.db", &DBOptions::default()).unwrap();
             assert!(db.cf_exists("my-stream"));
 
-            let stream = Streamly::new("my-stream", &db);
+            let stream = WALS::new("my-stream", &db);
             assert!(stream.is_ok());
 
             let stream_unroll = stream.unwrap();
@@ -173,7 +163,7 @@ mod tests {
             let db = Database::open("test_stream_iter.db", &DBOptions::default()).unwrap();
             assert!(!db.cf_exists("my-stream"));
 
-            let stream = Streamly::new("my-stream", &db);
+            let stream = WALS::new("my-stream", &db);
             assert!(stream.is_ok());
 
             let stream_unroll = stream.unwrap();
@@ -185,12 +175,12 @@ mod tests {
         }
 
         let db = Database::open("test_stream_iter.db", &DBOptions::default()).unwrap();
-        let mut stream = Streamly::new("my-stream", &db).unwrap();
+        let mut stream = WALS::new("my-stream", &db).unwrap();
         let _ = stream.append(&[1]);
         let _ = stream.append(&[1, 2]);
         let _ = stream.append(&[1, 2, 3]);
 
-        let mut stream2 = Streamly::new("new-stream", &db).unwrap();
+        let mut stream2 = WALS::new("new-stream", &db).unwrap();
 
         stream
             .snapshot()
@@ -213,7 +203,7 @@ mod tests {
             let db = Database::open("test_stream_iter_perf.db", &DBOptions::default()).unwrap();
             assert!(!db.cf_exists("my-stream"));
 
-            let stream = Streamly::new("my-stream", &db);
+            let stream = WALS::new("my-stream", &db);
             assert!(stream.is_ok());
 
             let stream_unroll = stream.unwrap();
@@ -225,11 +215,11 @@ mod tests {
         }
 
         let db = Database::open("test_stream_iter_perf.db", &DBOptions::default()).unwrap();
-        let mut stream = Streamly::new("my-stream", &db).unwrap();
+        let mut stream = WALS::new("my-stream", &db).unwrap();
 
         let start = epoch_secs();
         for _ in 0..65000 {
-            let _ = stream.append(&[1, 2, 3]);
+            let _ = stream.append(&[1; 100]);
         }
         let end = epoch_secs();
 
