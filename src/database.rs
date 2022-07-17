@@ -5,7 +5,7 @@ use rocksdb::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{errors::Result, id::StreamID, serialization::BinCode, stream::StreamlyMetadata};
+use crate::{errors::Result, id::StreamID, serialization::BinCode, wals::WALMetadata};
 
 #[derive(Serialize, Deserialize)]
 #[serde(remote = "rocksdb::DBCompressionType")]
@@ -151,15 +151,15 @@ impl Database {
         Ok(iter)
     }
 
-    pub(super) fn get_metadata(&self, cf_name: &str) -> Result<StreamlyMetadata> {
+    pub(super) fn get_metadata(&self, cf_name: &str) -> Result<WALMetadata> {
         if let Some(record) = self.get(cf_name, StreamID::metadata().to_string().as_str())? {
-            Ok(StreamlyMetadata::from_byte_vec(record.as_slice())?)
+            Ok(WALMetadata::from_byte_vec(record.as_slice())?)
         } else {
             Err("record not found".to_string())
         }
     }
 
-    pub(super) fn set_metadata(&self, cf_name: &str, metadata: StreamlyMetadata) -> Result<()> {
+    pub(super) fn set_metadata(&self, cf_name: &str, metadata: WALMetadata) -> Result<()> {
         self.set(
             cf_name,
             StreamID::metadata().to_string().as_str(),
