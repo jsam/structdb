@@ -1,7 +1,10 @@
 [package]
 name = "wal-s"
+description = "Implementation of write-ahead log based storage."
 version = "0.1.0"
 edition = "2021"
+license = "BSD 3-Clause 'New' or 'Revised' License"
+license-file = "LICENSE"
 
 
 [dependencies]

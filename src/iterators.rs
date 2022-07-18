@@ -1,6 +1,6 @@
 use rocksdb::{DBIterator, Direction, IteratorMode};
 
-use crate::{database::Database, id::StreamID, record::StreamRecord, snapshot::DatabaseSnapshot};
+use crate::{id::StreamID, record::StreamRecord, snapshot::DatabaseSnapshot};
 
 #[derive(Clone)]
 pub struct IteratorState {
