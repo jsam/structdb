@@ -5,8 +5,8 @@ pub mod iterators;
 pub mod record;
 pub mod serialization;
 pub mod snapshot;
-pub mod wals;
 pub mod timestamped;
+pub mod wals;
 
 #[cfg(test)]
 mod tests {

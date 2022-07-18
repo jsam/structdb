@@ -9,18 +9,27 @@ pub struct IteratorState {
 }
 
 impl IteratorState {
-    pub fn new(iter_name: String) -> Self {
+    pub fn new(iter_name: &str) -> Self {
         Self {
-            iter_name,
+            iter_name: iter_name.to_string(),
             from: StreamID::default(),
         }
+    }
+
+    pub fn start_from(mut self, from: StreamID) -> Self {
+        self.from = from;
+        self
     }
 
     pub fn get<'a>(
         snapshot: &'a DatabaseSnapshot,
         iter_name: String,
     ) -> crate::errors::Result<Self> {
-        let from = match snapshot.snapshot.get(format!("iterator-{0}", iter_name))? {
+        // TODO: Hash `iter_name`.
+        let from = match snapshot.db.get(
+            snapshot.cf_name,
+            format!("iterator-{0}", iter_name).as_str(),
+        )? {
             Some(bytes) => StreamID::from(String::from_utf8_lossy(bytes.as_ref()).as_ref()),
             None => StreamID::default(),
         };
@@ -42,6 +51,15 @@ impl IteratorState {
             iter_name: self.iter_name.clone(),
             from: new_from,
         };
+
+        // TODO: Cleanup
+        // let check = snapshot.db.get(snapshot.cf_name, &key)?;
+        // let check_internal = IteratorState::get(snapshot, self.iter_name.to_string())?;
+        // if let Some(value) = check {
+        //     println!("current={}, {}={} {}={}", new_id.to_string(), key, String::from_utf8_lossy(&value), key, check_internal.from.to_string());
+
+        // }
+
         Ok(new_self)
     }
 }
@@ -137,6 +155,7 @@ mod tests {
     use crate::{
         database::{DBOptions, Database},
         id::StreamID,
+        iterators::IteratorState,
         snapshot::DatabaseSnapshot,
     };
 
@@ -252,6 +271,116 @@ mod tests {
         }
         {
             let iter = raw_snapshot.iter(&StreamID::from("stream-000000000000000000003228"));
+
+            let mut count: u32 = 995;
+            for record in iter {
+                assert_eq!(format!("value_{0}", count), record.to_string());
+
+                let _debug = format!(
+                    "key={0}, value={1}, count={2}",
+                    record.key.to_string(),
+                    record.to_string(),
+                    count
+                );
+                println!("{}", _debug);
+
+                count += 1;
+            }
+        }
+    }
+
+    #[test]
+    fn test_stateful_iterator() {
+        let _ = fs::remove_dir_all("test_stateful_iterator.db");
+
+        let orig = Database::open("test_stateful_iterator.db", &DBOptions::default()).unwrap();
+        let _db = orig.clone();
+        let _ = _db.create_cf("0");
+
+        let _ = _db.set("0", "random-start", format!("randomvalue").as_bytes());
+
+        let metadata = StreamID::metadata();
+        let _ = _db.set(
+            "0",
+            metadata.to_string().as_str(),
+            format!("head=000").as_bytes(),
+        );
+
+        let mut start = StreamID::default();
+        for i in 0..1e3 as u32 {
+            let _ = _db.set(
+                "0",
+                format!("random{}", i).as_str(),
+                format!("randomvalue").as_bytes(),
+            );
+            let _ = _db.set(
+                "0",
+                start.to_string().as_str(),
+                format!("value_{0}", i).as_bytes(),
+            );
+            start = start.next();
+        }
+        let _ = _db.set(
+            "0",
+            metadata.to_string().as_str(),
+            format!("iterator=123").as_bytes(),
+        );
+        let _ = _db.set("0", "random-end", format!("randomvalue").as_bytes());
+
+        let new_db = orig.clone();
+        let snapshot = DatabaseSnapshot::new(&new_db, "0");
+        assert!(snapshot.is_ok());
+
+        let raw_snapshot = snapshot.unwrap();
+
+        {
+            let mut iter = raw_snapshot.siter("stateful-iterator").unwrap();
+            for i in 0..10 {
+                let record = iter.next().unwrap();
+                assert_eq!(format!("value_{0}", i), record.to_string());
+
+                let _debug = format!(
+                    "key={0}, value={1}, count={2}",
+                    record.key.to_string(),
+                    record.to_string(),
+                    i
+                );
+                println!("{}", _debug);
+            }
+
+            let new_db = orig.clone();
+            let snapshot = DatabaseSnapshot::new(&new_db, "0");
+            assert!(snapshot.is_ok());
+            let new_snapshot = snapshot.unwrap();
+            let iter_state =
+                IteratorState::get(&new_snapshot, "stateful-iterator".to_string()).unwrap();
+            let argh = iter_state.from.to_string();
+            assert_eq!("stream-000000000000000000000011".to_string(), argh);
+        }
+
+        {
+            let mut iter = raw_snapshot.siter("stateful-iterator").unwrap();
+            let mut count = 10; // Previous scope left it here.
+            for i in 0..10 {
+                let record = iter.next().unwrap();
+                assert_eq!(format!("value_{0}", count), record.to_string());
+
+                let _debug = format!(
+                    "key={0}, value={1}, count={2}",
+                    record.key.to_string(),
+                    record.to_string(),
+                    count
+                );
+                println!("{}", _debug);
+                count += 1;
+            }
+        }
+
+        // TODO: Implement support to start from specific identifier
+        {
+            let state = IteratorState::new("stateful-iterator")
+                .start_from(StreamID::from("stream-000000000000000000003228"));
+            let iter = raw_snapshot.siter_override(state).unwrap();
 
             let mut count: u32 = 995;
             for record in iter {
