@@ -1,6 +1,6 @@
 # WAL-S
 
-Implementation of write-ahead log with full storage support.
+Implementation of write-ahead log based storage.
 
 
 # Features
