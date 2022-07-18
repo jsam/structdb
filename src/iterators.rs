@@ -367,8 +367,6 @@ mod tests {
                 count += 1;
             }
         }
-
-        // TODO: Implement support to start from specific identifier
         {
             let state = IteratorState::new("stateful-iterator")
                 .start_from(StreamID::from("stream-000000000000000000003228"));
