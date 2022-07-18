@@ -39,14 +39,22 @@ impl<'a> DatabaseSnapshot<'a> {
     }
 
     pub fn set(&self, key: &str, value: &[u8]) -> crate::errors::Result<()> {
-        todo!()
+        self.db.set(self.cf_name, key, value)
     }
 
     // Statefull iterator.
-    pub fn siter(&self, name: String) -> crate::errors::Result<StreamIterator> {
-        let iter_state = IteratorState::get(self, name.clone())?;
+    pub fn siter(&self, name: &str) -> crate::errors::Result<StreamIterator> {
+        let iter_state = IteratorState::get(self, name.to_string().clone())?;
         let iter = StreamIterator::new(self, IteratorType::Stateful(iter_state));
 
+        Ok(iter)
+    }
+
+    pub fn siter_override(
+        &self,
+        override_state: IteratorState,
+    ) -> crate::errors::Result<StreamIterator> {
+        let iter = StreamIterator::new(self, IteratorType::Stateful(override_state));
         Ok(iter)
     }
 }
