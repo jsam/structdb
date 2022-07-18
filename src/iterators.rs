@@ -52,14 +52,6 @@ impl IteratorState {
             from: new_from,
         };
 
-        // TODO: Cleanup
-        // let check = snapshot.db.get(snapshot.cf_name, &key)?;
-        // let check_internal = IteratorState::get(snapshot, self.iter_name.to_string())?;
-        // if let Some(value) = check {
-        //     println!("current={}, {}={} {}={}", new_id.to_string(), key, String::from_utf8_lossy(&value), key, check_internal.from.to_string());
-
-        // }
-
         Ok(new_self)
     }
 }
