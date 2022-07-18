@@ -1,7 +1,9 @@
 [package]
 name = "wal-s"
-version = "0.1.0"
+description = "Implementation of write-ahead log based storage."
+version = "0.1.1"
 edition = "2021"
+license-file = "LICENSE"
 
 
 [dependencies]
