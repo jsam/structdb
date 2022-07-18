@@ -2,7 +2,7 @@ use std::mem;
 
 use serde::{Deserialize, Serialize};
 
-pub const IDENTIFIER_SIZE: usize = mem::size_of::<u64>();
+pub const IDENTIFIER_SIZE: usize = mem::size_of::<u128>();
 
 #[derive(Serialize, Deserialize, Clone, Hash, PartialEq, Eq)]
 pub struct StreamID {
@@ -65,8 +65,27 @@ impl From<&str> for StreamID {
             };
         }
 
-        let _bytes = id_part
-            .unwrap()
+        let _bytes = id_part.unwrap();
+        let byte_count = _bytes.len() / 3;
+        let _aligned = if byte_count < IDENTIFIER_SIZE {
+            let prefix_size = IDENTIFIER_SIZE - byte_count;
+            let result = format!(
+                "{0}{1}",
+                String::from_utf8(vec![b'0'; prefix_size * 3]).unwrap(),
+                _bytes
+            );
+            result
+        } else if byte_count > IDENTIFIER_SIZE {
+            let start_idx = _bytes.len() - (IDENTIFIER_SIZE * 3);
+            let sl = _bytes.as_bytes().to_owned();
+            let slice = &sl[start_idx..];
+            String::from_utf8(slice.to_vec()).unwrap()
+        } else {
+            let result = _bytes.to_string();
+            result
+        };
+
+        let __bytes = _aligned
             .chars()
             .collect::<Vec<char>>()
             .chunks(3)
@@ -74,7 +93,7 @@ impl From<&str> for StreamID {
             .collect::<Vec<u8>>();
 
         let mut mem_id = [0x0_u8; IDENTIFIER_SIZE];
-        mem_id.clone_from_slice(_bytes.as_ref());
+        mem_id.clone_from_slice(__bytes.as_ref());
 
         Self {
             id: mem_id,
@@ -121,6 +140,35 @@ impl StreamID {
             valid: true,
         }
     }
+
+    pub fn to_u128(&self) -> u128 {
+        let mut result: u128 = 0;
+        for byte in self.id.iter().rev() {
+            let deref = *byte as u128;
+            if deref == 0 {
+                break;
+            }
+            if result == 0 {
+                result = deref;
+                continue;
+            } else {
+                result *= deref;
+            }
+        }
+
+        result
+    }
+
+    pub fn distance(&self, other: &StreamID) -> u128 {
+        let lhs = self.to_u128();
+        let rhs = other.to_u128();
+
+        if lhs < rhs {
+            return 0;
+        }
+
+        lhs - rhs
+    }
 }
 
 #[cfg(test)]
@@ -128,31 +176,43 @@ mod tests {
     use crate::id::{StreamID, IDENTIFIER_SIZE};
 
     #[test]
-    fn test_byte_id() {
+    fn test_stream_id() {
         {
-            assert_eq!(IDENTIFIER_SIZE, 8);
+            assert_eq!(IDENTIFIER_SIZE, 16);
         }
 
         {
-            assert_eq!(StreamID::default().id, [0, 0, 0, 0, 0, 0, 0, 1]);
+            assert_eq!(
+                StreamID::default().id,
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+            );
         }
 
         {
             let mut bid = StreamID::default();
 
             let next_bid = bid.next();
-            assert_eq!(next_bid.id, [0, 0, 0, 0, 0, 0, 0, 2]);
+            assert_eq!(
+                next_bid.id,
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]
+            );
 
             let next_next_bid = next_bid.next();
 
-            assert_eq!(next_bid.id, [0, 0, 0, 0, 0, 0, 0, 2]);
-            assert_eq!(next_next_bid.id, [0, 0, 0, 0, 0, 0, 0, 3]);
+            assert_eq!(
+                next_bid.id,
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]
+            );
+            assert_eq!(
+                next_next_bid.id,
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3]
+            );
 
             for _ in 0..1e+6 as u64 {
                 bid = bid.next();
             }
 
-            assert_eq!(bid.id, [0, 0, 0, 0, 0, 15, 66, 65]);
+            assert_eq!(bid.id, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 66, 65]);
         }
 
         {
@@ -161,10 +221,39 @@ mod tests {
                 bid = bid.next();
             }
 
-            assert_eq!("stream-000000000000000015066065", bid.to_string());
+            assert_eq!(
+                "stream-000000000000000000000000000000000000000015066065",
+                bid.to_string()
+            );
 
-            let _bid: StreamID = StreamID::from("stream-000000000000000015066065");
+            let _bid: StreamID =
+                StreamID::from("stream-000000000000000000000000000000000000000015066065");
             assert_eq!(bid.to_string(), _bid.to_string());
+        }
+    }
+
+    #[test]
+    fn test_distance() {
+        {
+            let mut default = StreamID::default();
+            let mut meta = StreamID::metadata();
+
+            assert_eq!(default.to_u128(), 1);
+            assert_eq!(meta.to_u128(), 0);
+            assert_eq!(default.distance(&meta), 1);
+        }
+
+        {
+            let mut default = StreamID::default();
+            let mut default2 = StreamID::default();
+
+            default2 = default2.next();
+            default2 = default2.next();
+            default2 = default2.next();
+            default2 = default2.next();
+
+            assert_eq!(default2.distance(&default), 4);
+            assert_eq!(default.distance(&default2), 0);
         }
     }
 }

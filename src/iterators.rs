@@ -347,7 +347,10 @@ mod tests {
             let iter_state =
                 IteratorState::get(&new_snapshot, "stateful-iterator".to_string()).unwrap();
             let argh = iter_state.from.to_string();
-            assert_eq!("stream-000000000000000000000011".to_string(), argh);
+            assert_eq!(
+                "stream-000000000000000000000000000000000000000000000011".to_string(),
+                argh
+            );
         }
 
         {
