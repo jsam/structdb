@@ -29,4 +29,8 @@ impl StreamRecord {
             value: value,
         }
     }
+
+    pub fn size(&self) -> usize {
+        self.value.len()
+    }
 }

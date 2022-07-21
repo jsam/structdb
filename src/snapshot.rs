@@ -7,6 +7,7 @@ use crate::{
     errors::Result,
     id::StreamID,
     iterators::{IteratorState, IteratorType, StreamIterator},
+    window::SlideWindow,
 };
 
 /// A snapshot of `Database` with specified column family.
@@ -56,6 +57,10 @@ impl<'a> DatabaseSnapshot<'a> {
     ) -> crate::errors::Result<StreamIterator> {
         let iter = StreamIterator::new(self, IteratorType::Stateful(override_state));
         Ok(iter)
+    }
+
+    pub fn window(&self, size: u32, from: &StreamID) -> SlideWindow {
+        SlideWindow::new(size, self.iter(from))
     }
 }
 

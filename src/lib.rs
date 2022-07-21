@@ -1,4 +1,5 @@
 pub mod database;
+pub mod distance;
 pub mod errors;
 pub mod id;
 pub mod iterators;
@@ -7,12 +8,5 @@ pub mod serialization;
 pub mod snapshot;
 pub mod timestamped;
 pub mod wals;
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
-}
+pub mod window;
+pub mod writer;
