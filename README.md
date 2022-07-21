@@ -7,7 +7,7 @@ Implementation of write-ahead log based storage.
 
 - Write-Ahead Log 
 - Read snapshots
-- Internal write batching
+- Write batching
 - Metadata support
 - Stateless iterators
 - Stateful iterators
