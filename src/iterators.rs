@@ -1,6 +1,8 @@
 use rocksdb::{DBIterator, Direction, IteratorMode};
 
-use crate::{id::StreamID, record::StreamRecord, snapshot::DatabaseSnapshot};
+use crate::{
+    id::StreamID, record::StreamRecord, snapshot::DatabaseSnapshot, writer::WALWriteBuffer,
+};
 
 #[derive(Clone)]
 pub struct IteratorState {
@@ -67,9 +69,8 @@ pub struct StreamIterator<'a> {
     snapshot: &'a DatabaseSnapshot<'a>,
     pub raw_iter: DBIterator<'a>,
 
-    // TODO: `current` is not fully utilized, we should consider expanding the state here.
-    current: Option<StreamRecord>,
-    ended: bool,
+    pub current: Option<StreamRecord>,
+    pub ended: bool,
     iter_type: IteratorType, // Determines statefulness of an iterator.
 }
 
@@ -105,6 +106,23 @@ impl<'a> StreamIterator<'a> {
                 }
             }
         }
+    }
+
+    pub fn tail_distance(&self) -> crate::errors::Result<u128> {
+        let last_insert = match self
+            .snapshot
+            .db
+            .get(self.snapshot.cf_name, WALWriteBuffer::LAST_INSERT_KEY)?
+        {
+            Some(sid) => StreamID::from(String::from_utf8_lossy(&sid).as_ref()),
+            None => StreamID::default(),
+        };
+
+        let current = match &self.current {
+            Some(current) => current.key.clone(),
+            None => StreamID::default(),
+        };
+        Ok(last_insert.distance(&current))
     }
 }
 
@@ -338,6 +356,9 @@ mod tests {
                     i
                 );
                 println!("{}", _debug);
+
+                let distance = iter.tail_distance().unwrap();
+                assert_eq!(distance, 0); // NOTE: Distance is zero because we are not using WALS and last inserted value is unknown.
             }
 
             let new_db = orig.clone();

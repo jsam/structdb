@@ -2,10 +2,11 @@ use std::{path::Path, rc::Rc, sync::Arc};
 
 use rocksdb::{
     BoundColumnFamily, DBIteratorWithThreadMode, DBWithThreadMode, IteratorMode, MultiThreaded,
+    WriteBatch,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{errors::Result, id::StreamID, serialization::BinCode, wals::WALMetadata};
+use crate::errors::Result;
 
 #[derive(Serialize, Deserialize)]
 #[serde(remote = "rocksdb::DBCompressionType")]
@@ -125,6 +126,11 @@ impl Database {
             .map_err(Into::into)
     }
 
+    // Set batch of records.
+    pub fn set_batch(&self, batch: WriteBatch) -> crate::errors::Result<()> {
+        self.db.write(batch).map_err(Into::into)
+    }
+
     /// Get specified key.
     pub fn get(&self, cf_name: &str, key: &str) -> Result<Option<Vec<u8>>> {
         self.db
@@ -149,22 +155,6 @@ impl Database {
             .iterator_cf(&self.get_cf(cf_name)?, IteratorMode::Start);
 
         Ok(iter)
-    }
-
-    pub(super) fn get_metadata(&self, cf_name: &str) -> Result<WALMetadata> {
-        if let Some(record) = self.get(cf_name, StreamID::metadata().to_string().as_str())? {
-            Ok(WALMetadata::from_byte_vec(record.as_slice())?)
-        } else {
-            Err("record not found".to_string())
-        }
-    }
-
-    pub(super) fn set_metadata(&self, cf_name: &str, metadata: WALMetadata) -> Result<()> {
-        self.set(
-            cf_name,
-            StreamID::metadata().to_string().as_str(),
-            metadata.to_byte_vec()?.as_slice(),
-        )
     }
 }
 
