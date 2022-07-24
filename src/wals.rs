@@ -157,7 +157,7 @@ mod tests {
         assert_eq!(d, 0);
 
         iter.next();
-        assert_eq!(iter.ended, true);
+        assert!(iter.ended);
 
         let mut stream2 = WALS::new("new-stream", &db).unwrap();
 
@@ -200,7 +200,7 @@ mod tests {
         }
         let end = epoch_ns();
         let result: f64 = end as f64 - start as f64;
-        let as_secs = result * 1e-9 as f64;
+        let as_secs = result * 1e-9;
 
         // NOTE: Assert guarantee at 3mb per sec
         assert!(as_secs <= 1.05_f64);

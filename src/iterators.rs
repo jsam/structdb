@@ -204,16 +204,13 @@ mod tests {
         let raw_snapshot = snapshot.unwrap();
         let iter = raw_snapshot.iter(&StreamID::default());
 
-        let mut count: u32 = 0;
-        for (key, value) in iter.raw_iter {
+        for (count, (key, value)) in (0_u32..).zip(iter.raw_iter) {
             let _key = String::from_utf8(key.to_vec()).unwrap();
             let _value = String::from_utf8(value.to_vec()).unwrap();
             assert_eq!(format!("value_{0}", count), _value);
 
             let _debug = format!("key={0}, value={1}, count={2}", _key, _value, count);
             println!("{}", _debug);
-
-            count += 1;
         }
     }
 
@@ -225,13 +222,13 @@ mod tests {
         let _db = orig.clone();
         let _ = _db.create_cf("0");
 
-        let _ = _db.set("0", "random-start", format!("randomvalue").as_bytes());
+        let _ = _db.set("0", "random-start", "randomvalue".to_string().as_bytes());
 
         let metadata = StreamID::metadata();
         let _ = _db.set(
             "0",
             metadata.to_string().as_str(),
-            format!("head=000").as_bytes(),
+            "head=000".to_string().as_bytes(),
         );
 
         let mut start = StreamID::default();
@@ -239,7 +236,7 @@ mod tests {
             let _ = _db.set(
                 "0",
                 format!("random{}", i).as_str(),
-                format!("randomvalue").as_bytes(),
+                "randomvalue".to_string().as_bytes(),
             );
             let _ = _db.set(
                 "0",
@@ -251,11 +248,11 @@ mod tests {
         let _ = _db.set(
             "0",
             metadata.to_string().as_str(),
-            format!("iterator=123").as_bytes(),
+            "iterator=123".to_string().as_bytes(),
         );
-        let _ = _db.set("0", "random-end", format!("randomvalue").as_bytes());
+        let _ = _db.set("0", "random-end", "randomvalue".to_string().as_bytes());
 
-        let new_db = orig.clone();
+        let new_db = orig;
         let snapshot = DatabaseSnapshot::new(&new_db, "0");
         assert!(snapshot.is_ok());
 
@@ -264,8 +261,7 @@ mod tests {
         {
             let iter = raw_snapshot.iter(&StreamID::default());
 
-            let mut count: u32 = 0;
-            for record in iter {
+            for (count, record) in (0_u32..).zip(iter) {
                 assert_eq!(format!("value_{0}", count), record.to_string());
 
                 let _debug = format!(
@@ -275,8 +271,6 @@ mod tests {
                     count
                 );
                 println!("{}", _debug);
-
-                count += 1;
             }
         }
         {
@@ -307,13 +301,13 @@ mod tests {
         let _db = orig.clone();
         let _ = _db.create_cf("0");
 
-        let _ = _db.set("0", "random-start", format!("randomvalue").as_bytes());
+        let _ = _db.set("0", "random-start", "randomvalue".to_string().as_bytes());
 
         let metadata = StreamID::metadata();
         let _ = _db.set(
             "0",
             metadata.to_string().as_str(),
-            format!("head=000").as_bytes(),
+            "head=000".to_string().as_bytes(),
         );
 
         let mut start = StreamID::default();
@@ -321,7 +315,7 @@ mod tests {
             let _ = _db.set(
                 "0",
                 format!("random{}", i).as_str(),
-                format!("randomvalue").as_bytes(),
+                "randomvalue".to_string().as_bytes(),
             );
             let _ = _db.set(
                 "0",
@@ -333,9 +327,9 @@ mod tests {
         let _ = _db.set(
             "0",
             metadata.to_string().as_str(),
-            format!("iterator=123").as_bytes(),
+            "iterator=123".to_string().as_bytes(),
         );
-        let _ = _db.set("0", "random-end", format!("randomvalue").as_bytes());
+        let _ = _db.set("0", "random-end", "randomvalue".to_string().as_bytes());
 
         let new_db = orig.clone();
         let snapshot = DatabaseSnapshot::new(&new_db, "0");
@@ -361,7 +355,7 @@ mod tests {
                 assert_eq!(distance, 0); // NOTE: Distance is zero because we are not using WALS and last inserted value is unknown.
             }
 
-            let new_db = orig.clone();
+            let new_db = orig;
             let snapshot = DatabaseSnapshot::new(&new_db, "0");
             assert!(snapshot.is_ok());
             let new_snapshot = snapshot.unwrap();
