@@ -19,3 +19,5 @@ Cargo.lock
 
 # Cargo chef
 recipe.json
+
+.DS_Store
