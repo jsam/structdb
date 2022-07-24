@@ -1,6 +1,6 @@
 extern crate criterion;
 
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use wal_s::{
     database::{DBOptions, Database},
     wals::WALS,

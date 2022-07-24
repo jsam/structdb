@@ -45,7 +45,7 @@ impl<'a> DatabaseSnapshot<'a> {
 
     // Statefull iterator.
     pub fn siter(&self, name: &str) -> crate::errors::Result<StreamIterator> {
-        let iter_state = IteratorState::get(self, name.to_string().clone())?;
+        let iter_state = IteratorState::get(self, name.to_string())?;
         let iter = StreamIterator::new(self, IteratorType::Stateful(iter_state));
 
         Ok(iter)

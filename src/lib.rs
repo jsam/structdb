@@ -1,5 +1,4 @@
 pub mod database;
-pub mod distance;
 pub mod errors;
 pub mod id;
 pub mod iterators;

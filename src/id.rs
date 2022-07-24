@@ -17,10 +17,7 @@ impl Default for StreamID {
         let mut id = [0; IDENTIFIER_SIZE];
         id[IDENTIFIER_SIZE - 1] = 1;
 
-        Self {
-            id: id,
-            valid: true,
-        }
+        Self { id, valid: true }
     }
 }
 
@@ -48,7 +45,7 @@ impl ToString for StreamID {
 
 impl From<&str> for StreamID {
     fn from(key: &str) -> Self {
-        let mut parts = key.split("-");
+        let mut parts = key.split('-');
         let stream_part = parts.next();
         if stream_part.is_none() || stream_part.unwrap() != "stream" {
             return Self {
@@ -81,8 +78,7 @@ impl From<&str> for StreamID {
             let slice = &sl[start_idx..];
             String::from_utf8(slice.to_vec()).unwrap()
         } else {
-            let result = _bytes.to_string();
-            result
+            _bytes.to_string()
         };
 
         let __bytes = _aligned
@@ -235,8 +231,8 @@ mod tests {
     #[test]
     fn test_distance() {
         {
-            let mut default = StreamID::default();
-            let mut meta = StreamID::metadata();
+            let default = StreamID::default();
+            let meta = StreamID::metadata();
 
             assert_eq!(default.to_u128(), 1);
             assert_eq!(meta.to_u128(), 0);
@@ -244,7 +240,7 @@ mod tests {
         }
 
         {
-            let mut default = StreamID::default();
+            let default = StreamID::default();
             let mut default2 = StreamID::default();
 
             default2 = default2.next();

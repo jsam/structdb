@@ -77,7 +77,7 @@ impl Database {
         let _db = match rocksdb::DB::list_cf(&rocksdb::Options::default(), &path) {
             Ok(cf_names) => Self {
                 // NOTE: Database files exists, sourcing all CFs.
-                db: rocksdb::DB::open_cf(&options.into(), path, cf_names.clone())?,
+                db: rocksdb::DB::open_cf(&options.into(), path, cf_names)?,
                 options: *options,
             },
             Err(_) => Self {
@@ -238,10 +238,10 @@ mod tests {
         let key = "iterators".to_string();
         let value = "iter1,iter2,iter3,iter4";
 
-        let result = db.set(cf_name, &key.clone(), value.as_bytes());
+        let result = db.set(cf_name, &key, value.as_bytes());
         assert!(result.is_ok());
 
-        let result = db.get(cf_name, &key.clone());
+        let result = db.get(cf_name, &key);
         assert!(result.is_ok());
 
         let result_opt = result.unwrap();

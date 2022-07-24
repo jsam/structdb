@@ -6,8 +6,8 @@ use std::{rc::Rc, sync::Arc};
 
 pub struct WALS<'a> {
     pub stream_name: String,
-    database: Rc<Database>,
-    cf: Arc<BoundColumnFamily<'a>>,
+    pub database: Rc<Database>,
+    pub cf: Arc<BoundColumnFamily<'a>>,
 
     writer: WALWriteBuffer<'a>,
 }
@@ -19,16 +19,16 @@ impl<'a> WALS<'a> {
         let cf = match database.cf_exists(name) {
             true => db.get_cf(name)?.clone(),
             false => {
-                let _ = database.create_cf(name)?;
+                database.create_cf(name)?;
                 db.get_cf(name)?.clone()
             }
         };
 
-        let writer = WALWriteBuffer::new(&db, cf.clone());
+        let writer = WALWriteBuffer::new(db, cf.clone());
         Ok(Self {
             stream_name: name.to_string(),
             database: db.clone(),
-            cf: cf,
+            cf,
             writer,
         })
     }

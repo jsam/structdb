@@ -48,7 +48,7 @@ impl IteratorState {
         let new_from = new_id.next();
         let key = format!("iterator-{0}", self.iter_name);
 
-        let _ = snapshot.set(&key, new_from.to_string().as_bytes())?;
+        snapshot.set(&key, new_from.to_string().as_bytes())?;
         let new_self = Self {
             iter_name: self.iter_name.clone(),
             from: new_from,
@@ -88,7 +88,7 @@ impl<'a> StreamIterator<'a> {
                     raw_iter,
                     current: None,
                     ended: false,
-                    iter_type: IteratorType::Stateless(stream_id.clone()),
+                    iter_type: IteratorType::Stateless(stream_id),
                 }
             }
             IteratorType::Stateful(state) => {
@@ -180,7 +180,7 @@ mod tests {
         let _ = _db.set(
             "0",
             metadata.to_string().as_str(),
-            format!("head=000").as_bytes(),
+            "head=000".to_string().as_bytes(),
         );
 
         let mut start = StreamID::default();
@@ -195,7 +195,7 @@ mod tests {
         let _ = _db.set(
             "0",
             metadata.to_string().as_str(),
-            format!("iterator=123").as_bytes(),
+            "iterator=123".to_string().as_bytes(),
         );
 
         let snapshot = DatabaseSnapshot::new(&_db, "0");
@@ -377,7 +377,7 @@ mod tests {
         {
             let mut iter = raw_snapshot.siter("stateful-iterator").unwrap();
             let mut count = 10; // Previous scope left it here.
-            for i in 0..10 {
+            for _i in 0..10 {
                 let record = iter.next().unwrap();
                 assert_eq!(format!("value_{0}", count), record.to_string());
 
