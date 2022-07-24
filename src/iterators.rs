@@ -23,8 +23,8 @@ impl IteratorState {
         self
     }
 
-    pub fn get<'a>(
-        snapshot: &'a DatabaseSnapshot,
+    pub fn get(
+        snapshot: &'_ DatabaseSnapshot,
         iter_name: String,
     ) -> crate::errors::Result<Self> {
         // TODO: Hash `iter_name`.

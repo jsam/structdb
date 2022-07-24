@@ -64,21 +64,23 @@ impl From<&str> for StreamID {
 
         let _bytes = id_part.unwrap();
         let byte_count = _bytes.len() / 3;
-        let _aligned = if byte_count < IDENTIFIER_SIZE {
-            let prefix_size = IDENTIFIER_SIZE - byte_count;
-            let result = format!(
-                "{0}{1}",
-                String::from_utf8(vec![b'0'; prefix_size * 3]).unwrap(),
-                _bytes
-            );
-            result
-        } else if byte_count > IDENTIFIER_SIZE {
-            let start_idx = _bytes.len() - (IDENTIFIER_SIZE * 3);
-            let sl = _bytes.as_bytes().to_owned();
-            let slice = &sl[start_idx..];
-            String::from_utf8(slice.to_vec()).unwrap()
-        } else {
-            _bytes.to_string()
+        let _aligned = match byte_count.cmp(&IDENTIFIER_SIZE) {
+            std::cmp::Ordering::Less => {
+                let prefix_size = IDENTIFIER_SIZE - byte_count;
+                let result = format!(
+                    "{0}{1}",
+                    String::from_utf8(vec![b'0'; prefix_size * 3]).unwrap(),
+                    _bytes
+                );
+                result
+            }
+            std::cmp::Ordering::Equal => _bytes.to_string(),
+            std::cmp::Ordering::Greater => {
+                let start_idx = _bytes.len() - (IDENTIFIER_SIZE * 3);
+                let sl = _bytes.as_bytes().to_owned();
+                let slice = &sl[start_idx..];
+                String::from_utf8(slice.to_vec()).unwrap()
+            }
         };
 
         let __bytes = _aligned
