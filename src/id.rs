@@ -17,10 +17,7 @@ impl Default for StreamID {
         let mut id = [0; IDENTIFIER_SIZE];
         id[IDENTIFIER_SIZE - 1] = 1;
 
-        Self {
-            id: id,
-            valid: true,
-        }
+        Self { id, valid: true }
     }
 }
 
@@ -48,7 +45,7 @@ impl ToString for StreamID {
 
 impl From<&str> for StreamID {
     fn from(key: &str) -> Self {
-        let mut parts = key.split("-");
+        let mut parts = key.split('-');
         let stream_part = parts.next();
         if stream_part.is_none() || stream_part.unwrap() != "stream" {
             return Self {
@@ -67,22 +64,23 @@ impl From<&str> for StreamID {
 
         let _bytes = id_part.unwrap();
         let byte_count = _bytes.len() / 3;
-        let _aligned = if byte_count < IDENTIFIER_SIZE {
-            let prefix_size = IDENTIFIER_SIZE - byte_count;
-            let result = format!(
-                "{0}{1}",
-                String::from_utf8(vec![b'0'; prefix_size * 3]).unwrap(),
-                _bytes
-            );
-            result
-        } else if byte_count > IDENTIFIER_SIZE {
-            let start_idx = _bytes.len() - (IDENTIFIER_SIZE * 3);
-            let sl = _bytes.as_bytes().to_owned();
-            let slice = &sl[start_idx..];
-            String::from_utf8(slice.to_vec()).unwrap()
-        } else {
-            let result = _bytes.to_string();
-            result
+        let _aligned = match byte_count.cmp(&IDENTIFIER_SIZE) {
+            std::cmp::Ordering::Less => {
+                let prefix_size = IDENTIFIER_SIZE - byte_count;
+                let result = format!(
+                    "{0}{1}",
+                    String::from_utf8(vec![b'0'; prefix_size * 3]).unwrap(),
+                    _bytes
+                );
+                result
+            }
+            std::cmp::Ordering::Equal => _bytes.to_string(),
+            std::cmp::Ordering::Greater => {
+                let start_idx = _bytes.len() - (IDENTIFIER_SIZE * 3);
+                let sl = _bytes.as_bytes().to_owned();
+                let slice = &sl[start_idx..];
+                String::from_utf8(slice.to_vec()).unwrap()
+            }
         };
 
         let __bytes = _aligned
@@ -235,8 +233,8 @@ mod tests {
     #[test]
     fn test_distance() {
         {
-            let mut default = StreamID::default();
-            let mut meta = StreamID::metadata();
+            let default = StreamID::default();
+            let meta = StreamID::metadata();
 
             assert_eq!(default.to_u128(), 1);
             assert_eq!(meta.to_u128(), 0);
@@ -244,7 +242,7 @@ mod tests {
         }
 
         {
-            let mut default = StreamID::default();
+            let default = StreamID::default();
             let mut default2 = StreamID::default();
 
             default2 = default2.next();

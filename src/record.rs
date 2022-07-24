@@ -24,10 +24,7 @@ impl ToString for StreamRecord {
 
 impl StreamRecord {
     pub fn new(key: StreamID, value: Box<[u8]>) -> Self {
-        Self {
-            key: key,
-            value: value,
-        }
+        Self { key, value }
     }
 
     pub fn size(&self) -> usize {

@@ -19,8 +19,8 @@ impl<'a> WALWriteBuffer<'a> {
 
     pub fn new(db: &'a Rc<Database>, cf: Arc<BoundColumnFamily<'a>>) -> Self {
         Self {
-            db: db,
-            cf: cf,
+            db,
+            cf,
             last_insert: StreamID::default(),
             buffer: vec![],
             buffer_size: 0,
@@ -51,7 +51,7 @@ impl<'a> WALWriteBuffer<'a> {
             WALWriteBuffer::LAST_INSERT_KEY,
             self.last_insert.to_string(),
         );
-        let _ = self.db.set_batch(batch)?;
+        self.db.set_batch(batch)?;
 
         self.buffer = vec![];
         self.buffer_size = 0;

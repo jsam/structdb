@@ -45,7 +45,7 @@ impl<'a> DatabaseSnapshot<'a> {
 
     // Statefull iterator.
     pub fn siter(&self, name: &str) -> crate::errors::Result<StreamIterator> {
-        let iter_state = IteratorState::get(self, name.to_string().clone())?;
+        let iter_state = IteratorState::get(self, name.to_string())?;
         let iter = StreamIterator::new(self, IteratorType::Stateful(iter_state));
 
         Ok(iter)
@@ -98,7 +98,7 @@ mod tests {
         let _ = _db.set(
             "0",
             metadata.to_string().as_str(),
-            format!("head=000").as_bytes(),
+            "head=000".to_string().as_bytes(),
         );
 
         let mut start = StreamID::default();
@@ -113,7 +113,7 @@ mod tests {
         let _ = _db.set(
             "0",
             metadata.to_string().as_str(),
-            format!("iterator=123").as_bytes(),
+            "iterator=123".to_string().as_bytes(),
         );
 
         let snapshot = DatabaseSnapshot::new(&_db, "0");
@@ -122,16 +122,13 @@ mod tests {
         let raw_snapshot = snapshot.unwrap();
         let iter = raw_snapshot.iter(&StreamID::default());
 
-        let mut count: u32 = 0;
-        for (key, value) in iter.raw_iter {
+        for (count, (key, value)) in (0_u32..).zip(iter.raw_iter) {
             let _key = String::from_utf8(key.to_vec()).unwrap();
             let _value = String::from_utf8(value.to_vec()).unwrap();
             assert_eq!(format!("value_{0}", count), _value);
 
             let _debug = format!("key={0}, value={1}, count={2}", _key, _value, count);
             println!("{}", _debug);
-
-            count += 1;
         }
     }
 }
