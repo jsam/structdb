@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2022-07-24
+
+### Documentation
+
+- Updated readme with features ([#31](https://github.com/jsam/wal-s/issues/31))
+- Updated readme - typo fix ([#33](https://github.com/jsam/wal-s/issues/33))
+
+### Features
+
+- Added sliding window, distance, batch write and chunking ([#30](https://github.com/jsam/wal-s/issues/30))
+
+### Miscellaneous Tasks
+
+- Added clippy ([#37](https://github.com/jsam/wal-s/issues/37))
+
+### Testing
+
+- Added criterion for wals ([#34](https://github.com/jsam/wal-s/issues/34))
+
 ## [0.1.1] - 2022-07-18
 
 ### Documentation
