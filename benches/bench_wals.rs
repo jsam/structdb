@@ -34,13 +34,13 @@ pub fn benchmark_wals(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("append_1M", |b| {
-        b.iter(|| {
-            for _ in 0..1_000_000 {
-                let _ = stream.append(&[1; 32]);
-            }
-        })
-    });
+    // c.bench_function("append_1M", |b| {
+    //     b.iter(|| {
+    //         for _ in 0..1_000_000 {
+    //             let _ = stream.append(&[1; 32]);
+    //         }
+    //     })
+    // });
 }
 
 criterion_group!(benches, benchmark_wals);
