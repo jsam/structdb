@@ -21,14 +21,14 @@ pub struct DatabaseSnapshot<'a> {
 /// Implementation of `DBSnapshot` type.
 impl<'a> DatabaseSnapshot<'a> {
     pub fn new(db: &'a Database, cf_name: &'a str) -> Result<Self> {
-        db.db
+        db.raw
             .cf_handle(cf_name)
             .map(|result| {
                 return Self {
                     cf_name,
                     db,
                     column_family: result.clone(),
-                    snapshot: db.db.snapshot(),
+                    snapshot: db.raw.snapshot(),
                 };
             })
             .ok_or_else(|| "column family not found".to_string())
@@ -122,7 +122,9 @@ mod tests {
         let raw_snapshot = snapshot.unwrap();
         let iter = raw_snapshot.iter(&StreamID::default());
 
-        for (count, (key, value)) in (0_u32..).zip(iter.raw_iter) {
+        let iter = (0_u32..).zip(iter.raw_iter);
+        for (count, result) in iter {
+            let (key, value) = result.unwrap();
             let _key = String::from_utf8(key.to_vec()).unwrap();
             let _value = String::from_utf8(value.to_vec()).unwrap();
             assert_eq!(format!("value_{0}", count), _value);

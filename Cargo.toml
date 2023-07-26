@@ -1,6 +1,6 @@
 [package]
-name = "wal-s"
-description = "Implementation of write-ahead log based storage."
+name = "structdb"
+description = "Persistent data structures using RocksDB."
 version = "0.2.0"
 edition = "2021"
 license-file = "LICENSE"
@@ -13,7 +13,7 @@ serde = { version = "1.0", features = ["derive"]}
 
 
 [dependencies.rocksdb]
-version = "0.18"
+version = "0.21"
 default-features = false
 features = ["multi-threaded-cf", "lz4"]
 

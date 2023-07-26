@@ -23,10 +23,7 @@ impl IteratorState {
         self
     }
 
-    pub fn get(
-        snapshot: &'_ DatabaseSnapshot,
-        iter_name: String,
-    ) -> crate::errors::Result<Self> {
+    pub fn get(snapshot: &'_ DatabaseSnapshot, iter_name: String) -> crate::errors::Result<Self> {
         // TODO: Hash `iter_name`.
         let from = match snapshot.db.get(
             snapshot.cf_name,
@@ -137,7 +134,8 @@ impl<'a> Iterator for StreamIterator<'a> {
                 return None;
             }
 
-            if let Some((key, value)) = item {
+            let item = item.unwrap();
+            if let Ok((key, value)) = item {
                 let key = StreamID::from(key);
                 if !key.valid {
                     continue;
@@ -204,7 +202,8 @@ mod tests {
         let raw_snapshot = snapshot.unwrap();
         let iter = raw_snapshot.iter(&StreamID::default());
 
-        for (count, (key, value)) in (0_u32..).zip(iter.raw_iter) {
+        for (count, result) in (0_u32..).zip(iter.raw_iter) {
+            let (key, value) = result.unwrap();
             let _key = String::from_utf8(key.to_vec()).unwrap();
             let _value = String::from_utf8(value.to_vec()).unwrap();
             assert_eq!(format!("value_{0}", count), _value);

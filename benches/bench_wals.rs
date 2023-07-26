@@ -1,7 +1,7 @@
 extern crate criterion;
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use wal_s::{
+use structdb::{
     database::{DBOptions, Database},
     wals::WALS,
 };

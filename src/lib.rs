@@ -1,3 +1,5 @@
+pub mod caches;
+pub mod column;
 pub mod database;
 pub mod errors;
 pub mod id;
@@ -5,6 +7,7 @@ pub mod iterators;
 pub mod record;
 pub mod serialization;
 pub mod snapshot;
+pub mod stats;
 pub mod timestamped;
 pub mod wals;
 pub mod window;

@@ -67,7 +67,7 @@ impl std::convert::From<&DBOptions> for rocksdb::Options {
 }
 
 pub struct Database {
-    pub db: rocksdb::DB,
+    pub raw: Arc<rocksdb::DB>,
     options: DBOptions,
 }
 
@@ -77,12 +77,12 @@ impl Database {
         let _db = match rocksdb::DB::list_cf(&rocksdb::Options::default(), &path) {
             Ok(cf_names) => Self {
                 // NOTE: Database files exists, sourcing all CFs.
-                db: rocksdb::DB::open_cf(&options.into(), path, cf_names)?,
+                raw: Arc::new(rocksdb::DB::open_cf(&options.into(), path, cf_names)?),
                 options: *options,
             },
             Err(_) => Self {
                 // NOTE: DB files don't exists, create new structure.
-                db: rocksdb::DB::open(&options.into(), path)?,
+                raw: Arc::new(rocksdb::DB::open(&options.into(), path)?),
                 options: *options,
             },
         };
@@ -91,12 +91,12 @@ impl Database {
     }
 
     pub fn list_cf(&self) -> Result<Vec<String>> {
-        let result = rocksdb::DB::list_cf(&rocksdb::Options::default(), self.db.path())?;
+        let result = rocksdb::DB::list_cf(&rocksdb::Options::default(), self.raw.path())?;
         Ok(result)
     }
 
     pub fn get_cf(&self, name: &str) -> Result<Arc<BoundColumnFamily>> {
-        self.db
+        self.raw
             .cf_handle(name)
             .ok_or_else(|| "column family does not exists".to_string())
     }
@@ -108,39 +108,39 @@ impl Database {
 
     /// Creates new column family.
     pub fn create_cf(&self, name: &str) -> Result<()> {
-        self.db
+        self.raw
             .create_cf(name, &rocksdb::Options::from(&self.options))?;
 
-        self.db.flush().map_err(Into::into)
+        self.raw.flush().map_err(Into::into)
     }
 
     /// Drop column family with a given name.
     pub fn drop_cf(&self, name: &str) -> Result<()> {
-        self.db.drop_cf(name).map_err(Into::into)
+        self.raw.drop_cf(name).map_err(Into::into)
     }
 
     /// Set specified key value.
     pub fn set(&self, cf_name: &str, key: &str, value: &[u8]) -> Result<()> {
-        self.db
+        self.raw
             .put_cf(&self.get_cf(cf_name)?, key, value)
             .map_err(Into::into)
     }
 
     // Set batch of records.
     pub fn set_batch(&self, batch: WriteBatch) -> crate::errors::Result<()> {
-        self.db.write(batch).map_err(Into::into)
+        self.raw.write(batch).map_err(Into::into)
     }
 
     /// Get specified key.
     pub fn get(&self, cf_name: &str, key: &str) -> Result<Option<Vec<u8>>> {
-        self.db
+        self.raw
             .get_cf(&self.get_cf(cf_name)?, key)
             .map_err(Into::into)
     }
 
     /// Delete specified key.
     pub fn delete(&self, cf_name: &str, key: &str) -> Result<()> {
-        self.db
+        self.raw
             .delete_cf(&self.get_cf(cf_name)?, key)
             .map_err(Into::into)
     }
@@ -151,7 +151,7 @@ impl Database {
         cf_name: &str,
     ) -> Result<DBIteratorWithThreadMode<DBWithThreadMode<MultiThreaded>>> {
         let iter = self
-            .db
+            .raw
             .iterator_cf(&self.get_cf(cf_name)?, IteratorMode::Start);
 
         Ok(iter)
