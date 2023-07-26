@@ -70,9 +70,9 @@ unsafe impl Send for CfHandle {}
 unsafe impl Sync for CfHandle {}
 
 pub struct Migrations<P> {
-    target_version: Semver,
+    pub target_version: Semver,
     migrations: HashMap<Semver, Migration>,
-    version_provider: P,
+    pub version_provider: P,
 }
 
 impl Migrations<DefaultVersionProvider> {
