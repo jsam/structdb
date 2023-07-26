@@ -161,17 +161,20 @@ mod tests {
     use std::fs;
 
     use crate::{
-        database::{DBOptions, Database},
-        id::StreamID,
-        iterators::IteratorState,
-        snapshot::DatabaseSnapshot,
+        database::Database, id::StreamID, iterators::IteratorState, snapshot::DatabaseSnapshot,
     };
 
     #[test]
     fn test_iterator() {
         let _ = fs::remove_dir_all("test_iterator.db");
-
-        let mut _db = Database::open("test_iterator.db", &DBOptions::default()).unwrap();
+        let mut opts = Default::default();
+        let descriptors = vec![rocksdb::ColumnFamilyDescriptor::new("test_table", opts)];
+        let mut _db = Database::open(
+            "test_iterator.db",
+            &rocksdb::Options::default(),
+            descriptors,
+        )
+        .unwrap();
         let _ = _db.create_cf("0");
 
         let metadata = StreamID::metadata();
@@ -216,9 +219,15 @@ mod tests {
     #[test]
     fn test_stream_iterator() {
         let _ = fs::remove_dir_all("test_stream_iterator.db");
+        let mut opts = Default::default();
+        let descriptors = vec![rocksdb::ColumnFamilyDescriptor::new("test_table", opts)];
 
-        let orig = Database::open("test_stream_iterator.db", &DBOptions::default()).unwrap();
-        let _db = orig.clone();
+        let _db = Database::open(
+            "test_stream_iterator.db",
+            &rocksdb::Options::default(),
+            descriptors,
+        )
+        .unwrap();
         let _ = _db.create_cf("0");
 
         let _ = _db.set("0", "random-start", "randomvalue".to_string().as_bytes());
@@ -251,8 +260,7 @@ mod tests {
         );
         let _ = _db.set("0", "random-end", "randomvalue".to_string().as_bytes());
 
-        let new_db = orig;
-        let snapshot = DatabaseSnapshot::new(&new_db, "0");
+        let snapshot = DatabaseSnapshot::new(&_db, "0");
         assert!(snapshot.is_ok());
 
         let raw_snapshot = snapshot.unwrap();
@@ -295,9 +303,14 @@ mod tests {
     #[test]
     fn test_stateful_iterator() {
         let _ = fs::remove_dir_all("test_stateful_iterator.db");
-
-        let orig = Database::open("test_stateful_iterator.db", &DBOptions::default()).unwrap();
-        let _db = orig.clone();
+        let mut opts = Default::default();
+        let descriptors = vec![rocksdb::ColumnFamilyDescriptor::new("test_table", opts)];
+        let _db = Database::open(
+            "test_stateful_iterator.db",
+            &rocksdb::Options::default(),
+            descriptors,
+        )
+        .unwrap();
         let _ = _db.create_cf("0");
 
         let _ = _db.set("0", "random-start", "randomvalue".to_string().as_bytes());
@@ -330,8 +343,7 @@ mod tests {
         );
         let _ = _db.set("0", "random-end", "randomvalue".to_string().as_bytes());
 
-        let new_db = orig.clone();
-        let snapshot = DatabaseSnapshot::new(&new_db, "0");
+        let snapshot = DatabaseSnapshot::new(&_db, "0");
         assert!(snapshot.is_ok());
 
         let raw_snapshot = snapshot.unwrap();
@@ -354,8 +366,7 @@ mod tests {
                 assert_eq!(distance, 0); // NOTE: Distance is zero because we are not using WALS and last inserted value is unknown.
             }
 
-            let new_db = orig;
-            let snapshot = DatabaseSnapshot::new(&new_db, "0");
+            let snapshot = DatabaseSnapshot::new(&_db, "0");
             assert!(snapshot.is_ok());
             let new_snapshot = snapshot.unwrap();
             let iter_state =

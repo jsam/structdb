@@ -68,18 +68,21 @@ impl<'a> DatabaseSnapshot<'a> {
 mod tests {
     use std::fs;
 
-    use crate::{
-        database::{DBOptions, Database},
-        id::StreamID,
-    };
+    use crate::{database::Database, id::StreamID};
 
     use super::DatabaseSnapshot;
 
     #[test]
     fn test_db_snapshot_from() {
         let _ = fs::remove_dir_all("test_db_snapshot_from.db");
-
-        let db = Database::open("test_db_snapshot_from.db", &DBOptions::default()).unwrap();
+        let mut opts = Default::default();
+        let descriptors = vec![rocksdb::ColumnFamilyDescriptor::new("test_table", opts)];
+        let db = Database::open(
+            "test_db_snapshot_from.db",
+            &rocksdb::Options::default(),
+            descriptors,
+        )
+        .unwrap();
         let cf_name = "stream1";
         let _ = db.create_cf(cf_name);
 
@@ -90,8 +93,14 @@ mod tests {
     #[test]
     fn test_snapshot_iteration() {
         let _ = fs::remove_dir_all("test_snapshot_iteration.db");
-
-        let _db = Database::open("test_snapshot_iteration.db", &DBOptions::default()).unwrap();
+        let mut opts = Default::default();
+        let descriptors = vec![rocksdb::ColumnFamilyDescriptor::new("test_table", opts)];
+        let _db = Database::open(
+            "test_snapshot_iteration.db",
+            &rocksdb::Options::default(),
+            descriptors,
+        )
+        .unwrap();
         let _ = _db.create_cf("0");
 
         let metadata = StreamID::metadata();

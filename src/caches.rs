@@ -10,7 +10,7 @@ impl Default for Caches {
 }
 
 impl Caches {
-    const MIN_CAPACITY: usize = 64 * 1024 * 1024; // 64 MB
+    const MIN_CAPACITY: usize = 64 * 1024 * 1024;
 
     pub fn with_capacity(capacity: usize) -> Self {
         let block_cache_capacity = std::cmp::max(capacity, Self::MIN_CAPACITY);
