@@ -1,7 +1,7 @@
 use rocksdb::{DBIterator, Direction, IteratorMode};
 use vlseqid::id::BigID;
 
-use crate::{record::StreamRecord, snapshot::DatabaseSnapshot, writer::WALWriteBuffer};
+use crate::{record::SeqRecord, snapshot::DatabaseSnapshot, writer::WALWriteBuffer};
 
 #[derive(Clone)]
 pub struct IteratorState {
@@ -65,7 +65,7 @@ pub struct StreamIterator<'a> {
     snapshot: &'a DatabaseSnapshot<'a>,
     pub raw_iter: DBIterator<'a>,
 
-    pub current: Option<StreamRecord>,
+    pub current: Option<SeqRecord>,
     pub ended: bool,
     iter_type: IteratorType, // Determines statefulness of an iterator.
 }
@@ -123,7 +123,7 @@ impl<'a> StreamIterator<'a> {
 }
 
 impl<'a> Iterator for StreamIterator<'a> {
-    type Item = StreamRecord;
+    type Item = SeqRecord;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -140,7 +140,7 @@ impl<'a> Iterator for StreamIterator<'a> {
                     continue;
                 }
 
-                let record = StreamRecord::new(key, value);
+                let record = SeqRecord::new(key, value);
                 self.current = Some(record.clone());
 
                 if let IteratorType::Stateful(state) = &self.iter_type {

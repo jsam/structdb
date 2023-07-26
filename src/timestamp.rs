@@ -18,12 +18,12 @@ pub fn epoch_secs() -> u64 {
 }
 
 #[derive(Serialize, Deserialize, Clone, Hash, PartialEq, Eq)]
-pub struct TimeStamped {
+pub struct Timestamp {
     pub created_at: u64,
     pub updated_at: u64,
 }
 
-impl TimeStamped {
+impl Timestamp {
     pub fn new() -> Self {
         Self {
             created_at: epoch_secs(),
@@ -45,7 +45,7 @@ impl TimeStamped {
     }
 }
 
-impl Default for TimeStamped {
+impl Default for Timestamp {
     fn default() -> Self {
         Self::new()
     }

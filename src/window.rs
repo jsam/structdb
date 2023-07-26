@@ -1,4 +1,4 @@
-use crate::{iterators::StreamIterator, record::StreamRecord};
+use crate::{iterators::StreamIterator, record::SeqRecord};
 
 trait Window {
     type Item;
@@ -18,7 +18,7 @@ impl<'a> SlideWindow<'a> {
 }
 
 impl<'a> Iterator for SlideWindow<'a> {
-    type Item = Vec<StreamRecord>;
+    type Item = Vec<SeqRecord>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let distance = self.iterator.tail_distance().unwrap_or(0);

@@ -12,7 +12,7 @@ pub mod serialization;
 pub mod snapshot;
 pub mod stats;
 pub mod table;
-pub mod timestamped;
+pub mod timestamp;
 pub mod wals;
 pub mod window;
 pub mod writer;
