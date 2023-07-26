@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use rocksdb::BoundColumnFamily;
+use vlseqid::id::BigID;
 
 use crate::{
     database::Database,
     errors::Result,
-    id::StreamID,
     iterators::{IteratorState, IteratorType, StreamIterator},
     window::SlideWindow,
 };
@@ -35,7 +35,7 @@ impl<'a> DatabaseSnapshot<'a> {
     }
 
     // Stateless iterator.
-    pub fn iter(&self, from: &StreamID) -> StreamIterator {
+    pub fn iter(&self, from: &BigID) -> StreamIterator {
         StreamIterator::new(self, IteratorType::Stateless(from.clone()))
     }
 
@@ -59,7 +59,7 @@ impl<'a> DatabaseSnapshot<'a> {
         Ok(iter)
     }
 
-    pub fn window(&self, size: u32, from: &StreamID) -> SlideWindow {
+    pub fn window(&self, size: u32, from: &BigID) -> SlideWindow {
         SlideWindow::new(size, self.iter(from))
     }
 }
@@ -68,7 +68,9 @@ impl<'a> DatabaseSnapshot<'a> {
 mod tests {
     use std::fs;
 
-    use crate::{database::Database, id::StreamID};
+    use vlseqid::id::BigID;
+
+    use crate::database::Database;
 
     use super::DatabaseSnapshot;
 
@@ -103,14 +105,14 @@ mod tests {
         .unwrap();
         let _ = _db.create_cf("0");
 
-        let metadata = StreamID::metadata();
+        let metadata = BigID::metadata();
         let _ = _db.set(
             "0",
             metadata.to_string().as_str(),
             "head=000".to_string().as_bytes(),
         );
 
-        let mut start = StreamID::default();
+        let mut start = BigID::default();
         for i in 0..1e3 as u32 {
             let _ = _db.set(
                 "0",
@@ -129,7 +131,7 @@ mod tests {
         assert!(snapshot.is_ok());
 
         let raw_snapshot = snapshot.unwrap();
-        let iter = raw_snapshot.iter(&StreamID::default());
+        let iter = raw_snapshot.iter(&BigID::default());
 
         let iter = (0_u32..).zip(iter.raw_iter);
         for (count, result) in iter {

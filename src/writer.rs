@@ -1,13 +1,14 @@
 use crate::errors::Result;
 use rocksdb::{BoundColumnFamily, WriteBatch};
+use vlseqid::id::BigID;
 
-use crate::{database::Database, id::StreamID};
+use crate::database::Database;
 use std::{rc::Rc, sync::Arc};
 
 pub struct WALWriteBuffer<'a> {
     db: &'a Rc<Database>,
     cf: Arc<BoundColumnFamily<'a>>,
-    pub last_insert: StreamID,
+    pub last_insert: BigID,
 
     buffer: Vec<Vec<u8>>,
     buffer_size: u128,
@@ -21,7 +22,7 @@ impl<'a> WALWriteBuffer<'a> {
         Self {
             db,
             cf,
-            last_insert: StreamID::default(),
+            last_insert: BigID::default(),
             buffer: vec![],
             buffer_size: 0,
             txn_size: 64512,

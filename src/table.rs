@@ -33,11 +33,9 @@ impl<T> TableImpl<T>
 where
     T: Table,
 {
-    /// Creates a column family wrapper instance.
     pub fn new(db: Arc<rocksdb::DB>) -> Self {
         use rocksdb::AsColumnFamilyRef;
 
-        // Check that tree exists
         let cf = CfHandle(db.cf_handle(T::NAME).unwrap().inner());
 
         let mut write_config = Default::default();
@@ -55,49 +53,41 @@ where
         }
     }
 
-    /// Returns a bounded column family handle.
     pub fn cf(&'_ self) -> BoundedCfHandle<'_> {
         BoundedCfHandle::new(self.cf.0)
     }
 
-    /// Returns an unbounded column family handle.
     pub fn get_unbounded_cf(&self) -> UnboundedCfHandle {
         UnboundedCfHandle::new(self.cf.0, self.db.clone())
     }
 
-    /// Returns an inner rocksdb instance.
     #[inline]
     pub fn db(&self) -> &Arc<rocksdb::DB> {
         &self.db
     }
 
-    /// Returns an existing read config.
     #[inline]
     pub fn read_config(&self) -> &rocksdb::ReadOptions {
         &self.read_config
     }
 
-    /// Creates a new read config with options applied.
     pub fn new_read_config(&self) -> rocksdb::ReadOptions {
         let mut read_config = Default::default();
         T::read_options(&mut read_config);
         read_config
     }
 
-    /// Returns an existing write config.
     #[inline]
     pub fn write_config(&self) -> &rocksdb::WriteOptions {
         &self.write_config
     }
 
-    /// Creates a new write config with options applied.
     pub fn new_write_config(&self) -> rocksdb::WriteOptions {
         let mut write_config = Default::default();
         T::write_options(&mut write_config);
         write_config
     }
 
-    /// Gets a value from the DB.
     #[inline]
     pub fn get<K: AsRef<[u8]>>(
         &self,
@@ -114,7 +104,6 @@ where
         db_get(self.db.as_ref(), self.cf, key.as_ref(), &self.read_config)
     }
 
-    /// Inserts a new value into the DB.
     #[inline]
     pub fn insert<K, V>(&self, key: K, value: V) -> Result<(), rocksdb::Error>
     where
@@ -139,7 +128,6 @@ where
         )
     }
 
-    /// Removes a value from the DB.
     #[allow(unused)]
     #[inline]
     pub fn remove<K: AsRef<[u8]>>(&self, key: K) -> Result<(), rocksdb::Error> {
@@ -154,7 +142,6 @@ where
         db_remove(self.db.as_ref(), self.cf, key.as_ref(), &self.write_config)
     }
 
-    /// Checks whether the specified key is present in the DB.
     #[inline]
     pub fn contains_key<K: AsRef<[u8]>>(&self, key: K) -> Result<bool, rocksdb::Error> {
         fn db_contains_key(
@@ -171,7 +158,6 @@ where
         db_contains_key(self.db.as_ref(), self.cf, key.as_ref(), &self.read_config)
     }
 
-    /// Creates an iterator with the specified mode and default read options.
     pub fn iterator(&'_ self, mode: rocksdb::IteratorMode) -> rocksdb::DBIterator<'_> {
         let mut read_config = Default::default();
         T::read_options(&mut read_config);
@@ -179,7 +165,6 @@ where
         self.db.iterator_cf_opt(&self.cf, read_config, mode)
     }
 
-    /// Creates a prefix iterator with the specified prefix and default read options.
     #[allow(unused)]
     pub fn prefix_iterator<P>(&'_ self, prefix: P) -> rocksdb::DBRawIterator<'_>
     where
@@ -195,7 +180,6 @@ where
         iter
     }
 
-    /// Creates a raw iterator with default read options.
     pub fn raw_iterator(&'_ self) -> rocksdb::DBRawIterator<'_> {
         let mut read_config = Default::default();
         T::read_options(&mut read_config);

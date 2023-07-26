@@ -18,9 +18,6 @@ pub trait VersionProvider {
     fn set_version(&self, db: &StructDB, version: Semver) -> Result<(), Error>;
 }
 
-/// A simple version provider.
-///
-/// Uses `weedb_version` entry in the `default` column family.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct DefaultVersionProvider;
 
@@ -83,7 +80,6 @@ impl Builder {
         self
     }
 
-    /// Opens a DB instance.
     pub fn build(self) -> Result<StructDB, rocksdb::Error> {
         let db = Database::open(self.path, &self.options, self.descriptors)?;
 
@@ -124,13 +120,11 @@ impl StructDB {
         })
     }
 
-    /// Returns an underlying RocksDB instance.
     #[inline]
     pub fn raw(&self) -> &Arc<rocksdb::DB> {
         &self.db.raw
     }
 
-    /// Returns an underlying caches group.
     #[inline]
     pub fn caches(&self) -> &Caches {
         &self.caches

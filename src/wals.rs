@@ -70,7 +70,7 @@
 
 //     use crate::{
 //         database::{DBOptions, Database},
-//         id::StreamID,
+//         id::BigID,
 //         timestamped::epoch_ns,
 //     };
 
@@ -92,7 +92,7 @@
 //             assert_eq!(stream_unroll.stream_name, "my-stream".to_string());
 //             assert_eq!(
 //                 stream_unroll.writer.last_insert.to_string(),
-//                 StreamID::default().to_string()
+//                 BigID::default().to_string()
 //             );
 //         }
 
@@ -108,7 +108,7 @@
 //             assert_eq!(stream_unroll.stream_name, "my-stream".to_string());
 //             assert_eq!(
 //                 stream_unroll.writer.last_insert.to_string(),
-//                 StreamID::default().to_string()
+//                 BigID::default().to_string()
 //             );
 //         }
 //     }
@@ -129,7 +129,7 @@
 //             assert_eq!(stream_unroll.stream_name, "my-stream".to_string());
 //             assert_eq!(
 //                 stream_unroll.writer.last_insert.to_string(),
-//                 StreamID::default().to_string()
+//                 BigID::default().to_string()
 //             );
 //         }
 
@@ -141,7 +141,7 @@
 //         stream = stream.flush();
 
 //         let snap = stream.snapshot().unwrap();
-//         let mut iter = snap.iter(&StreamID::default());
+//         let mut iter = snap.iter(&BigID::default());
 //         let d = iter.tail_distance().unwrap();
 //         assert_eq!(d, 3);
 
@@ -164,7 +164,7 @@
 //         stream
 //             .snapshot()
 //             .unwrap()
-//             .iter(&StreamID::default())
+//             .iter(&BigID::default())
 //             .for_each(|record| {
 //                 println!("record={:?}", record.value);
 //                 let _ = stream2.append(&record.value);
@@ -187,7 +187,7 @@
 //             assert_eq!(stream_unroll.stream_name, "my-stream".to_string());
 //             assert_eq!(
 //                 stream_unroll.writer.last_insert.to_string(),
-//                 StreamID::default().to_string()
+//                 BigID::default().to_string()
 //             );
 //         }
 
@@ -223,7 +223,7 @@
 //                 .flush()
 //                 .snapshot()
 //                 .unwrap()
-//                 .window(10, &StreamID::default())
+//                 .window(10, &BigID::default())
 //                 .for_each(|batch| {
 //                     println!("size={}", batch.len());
 //                     assert_eq!(batch.len(), 10);

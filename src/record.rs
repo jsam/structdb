@@ -1,10 +1,9 @@
 use serde::{Deserialize, Serialize};
-
-use crate::id::StreamID;
+use vlseqid::id::BigID;
 
 #[derive(Serialize, Deserialize, Clone, Hash, PartialEq, Eq)]
 pub struct StreamRecord {
-    pub key: StreamID,
+    pub key: BigID,
     pub value: Box<[u8]>,
 }
 
@@ -23,7 +22,7 @@ impl ToString for StreamRecord {
 }
 
 impl StreamRecord {
-    pub fn new(key: StreamID, value: Box<[u8]>) -> Self {
+    pub fn new(key: BigID, value: Box<[u8]>) -> Self {
         Self { key, value }
     }
 

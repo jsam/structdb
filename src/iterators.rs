@@ -1,24 +1,23 @@
 use rocksdb::{DBIterator, Direction, IteratorMode};
+use vlseqid::id::BigID;
 
-use crate::{
-    id::StreamID, record::StreamRecord, snapshot::DatabaseSnapshot, writer::WALWriteBuffer,
-};
+use crate::{record::StreamRecord, snapshot::DatabaseSnapshot, writer::WALWriteBuffer};
 
 #[derive(Clone)]
 pub struct IteratorState {
     pub iter_name: String,
-    pub from: StreamID,
+    pub from: BigID,
 }
 
 impl IteratorState {
     pub fn new(iter_name: &str) -> Self {
         Self {
             iter_name: iter_name.to_string(),
-            from: StreamID::default(),
+            from: BigID::default(),
         }
     }
 
-    pub fn start_from(mut self, from: StreamID) -> Self {
+    pub fn start_from(mut self, from: BigID) -> Self {
         self.from = from;
         self
     }
@@ -29,8 +28,8 @@ impl IteratorState {
             snapshot.cf_name,
             format!("iterator-{0}", iter_name).as_str(),
         )? {
-            Some(bytes) => StreamID::from(String::from_utf8_lossy(bytes.as_ref()).as_ref()),
-            None => StreamID::default(),
+            Some(bytes) => BigID::from(String::from_utf8_lossy(bytes.as_ref()).as_ref()),
+            None => BigID::default(),
         };
 
         let _self = Self { iter_name, from };
@@ -40,7 +39,7 @@ impl IteratorState {
     pub fn set<'a>(
         &self,
         snapshot: &'a DatabaseSnapshot,
-        new_id: StreamID,
+        new_id: BigID,
     ) -> crate::errors::Result<Self> {
         let new_from = new_id.next();
         let key = format!("iterator-{0}", self.iter_name);
@@ -57,7 +56,7 @@ impl IteratorState {
 
 #[derive(Clone)]
 pub enum IteratorType {
-    Stateless(StreamID),
+    Stateless(BigID),
     Stateful(IteratorState),
 }
 
@@ -111,13 +110,13 @@ impl<'a> StreamIterator<'a> {
             .db
             .get(self.snapshot.cf_name, WALWriteBuffer::LAST_INSERT_KEY)?
         {
-            Some(sid) => StreamID::from(String::from_utf8_lossy(&sid).as_ref()),
-            None => StreamID::default(),
+            Some(sid) => BigID::from(String::from_utf8_lossy(&sid).as_ref()),
+            None => BigID::default(),
         };
 
         let current = match &self.current {
             Some(current) => current.key.clone(),
-            None => StreamID::default(),
+            None => BigID::default(),
         };
         Ok(last_insert.distance(&current))
     }
@@ -136,7 +135,7 @@ impl<'a> Iterator for StreamIterator<'a> {
 
             let item = item.unwrap();
             if let Ok((key, value)) = item {
-                let key = StreamID::from(key);
+                let key = BigID::from(key);
                 if !key.valid {
                     continue;
                 }
@@ -160,9 +159,9 @@ impl<'a> Iterator for StreamIterator<'a> {
 mod tests {
     use std::fs;
 
-    use crate::{
-        database::Database, id::StreamID, iterators::IteratorState, snapshot::DatabaseSnapshot,
-    };
+    use vlseqid::id::BigID;
+
+    use crate::{database::Database, iterators::IteratorState, snapshot::DatabaseSnapshot};
 
     #[test]
     fn test_iterator() {
@@ -177,14 +176,14 @@ mod tests {
         .unwrap();
         let _ = _db.create_cf("0");
 
-        let metadata = StreamID::metadata();
+        let metadata = BigID::metadata();
         let _ = _db.set(
             "0",
             metadata.to_string().as_str(),
             "head=000".to_string().as_bytes(),
         );
 
-        let mut start = StreamID::default();
+        let mut start = BigID::default();
         for i in 0..1e3 as u32 {
             let _ = _db.set(
                 "0",
@@ -203,7 +202,7 @@ mod tests {
         assert!(snapshot.is_ok());
 
         let raw_snapshot = snapshot.unwrap();
-        let iter = raw_snapshot.iter(&StreamID::default());
+        let iter = raw_snapshot.iter(&BigID::default());
 
         for (count, result) in (0_u32..).zip(iter.raw_iter) {
             let (key, value) = result.unwrap();
@@ -232,14 +231,14 @@ mod tests {
 
         let _ = _db.set("0", "random-start", "randomvalue".to_string().as_bytes());
 
-        let metadata = StreamID::metadata();
+        let metadata = BigID::metadata();
         let _ = _db.set(
             "0",
             metadata.to_string().as_str(),
             "head=000".to_string().as_bytes(),
         );
 
-        let mut start = StreamID::default();
+        let mut start = BigID::default();
         for i in 0..1e3 as u32 {
             let _ = _db.set(
                 "0",
@@ -266,7 +265,7 @@ mod tests {
         let raw_snapshot = snapshot.unwrap();
 
         {
-            let iter = raw_snapshot.iter(&StreamID::default());
+            let iter = raw_snapshot.iter(&BigID::default());
 
             for (count, record) in (0_u32..).zip(iter) {
                 assert_eq!(format!("value_{0}", count), record.to_string());
@@ -281,7 +280,7 @@ mod tests {
             }
         }
         {
-            let iter = raw_snapshot.iter(&StreamID::from("stream-000000000000000000003228"));
+            let iter = raw_snapshot.iter(&BigID::from("stream-000000000000000000003228"));
 
             let mut count: u32 = 995;
             for record in iter {
@@ -315,14 +314,14 @@ mod tests {
 
         let _ = _db.set("0", "random-start", "randomvalue".to_string().as_bytes());
 
-        let metadata = StreamID::metadata();
+        let metadata = BigID::metadata();
         let _ = _db.set(
             "0",
             metadata.to_string().as_str(),
             "head=000".to_string().as_bytes(),
         );
 
-        let mut start = StreamID::default();
+        let mut start = BigID::default();
         for i in 0..1e3 as u32 {
             let _ = _db.set(
                 "0",
@@ -397,7 +396,7 @@ mod tests {
         }
         {
             let state = IteratorState::new("stateful-iterator")
-                .start_from(StreamID::from("stream-000000000000000000003228"));
+                .start_from(BigID::from("stream-000000000000000000003228"));
             let iter = raw_snapshot.siter_override(state).unwrap();
 
             let mut count: u32 = 995;
