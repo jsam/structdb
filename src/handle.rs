@@ -1,7 +1,7 @@
 use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 
 use crate::{
-    builder::{DefaultVersionProvider, Migration, Version, StructDB, VersionProvider},
+    builder::{DefaultVersionProvider, Migration, StructDB, Version, VersionProvider},
     errors::Error,
 };
 

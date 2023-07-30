@@ -1,7 +1,7 @@
 use vlseqid::id::BigID;
 
 use crate::errors::{Error, Result};
-use crate::iterators::StatefulIter;
+use crate::iterator::TopicIter;
 use crate::record::{Record, SeqRecord};
 use crate::table::{Table, TableImpl};
 
@@ -40,10 +40,8 @@ where
         Ok(SeqRecord::new(self.last_insert.clone(), value.clone()))
     }
 
-    pub fn window(&'_ self, name: &str, batch_size: usize) -> StatefulIter<'_, T> {
-        let table = Box::new(&self.table);
-
-        StatefulIter::new(table, name, batch_size)
+    pub fn window(&'_ self, name: &str, batch_size: usize) -> TopicIter<'_, T> {
+        TopicIter::new(Box::new(self), name, batch_size)
     }
 }
 
@@ -53,7 +51,7 @@ mod tests {
     use std::fs;
 
     use crate::{
-        builder::StructDB, caches::Caches, iterators::BatchIterator, record::SeqRecord,
+        builder::StructDB, caches::Caches, iterator::BatchIterator, record::SeqRecord,
         serialization::BinCode, table::Table,
     };
 
@@ -175,6 +173,7 @@ mod tests {
                 }
             }
             assert_eq!(count, 50);
+            assert_eq!(iter.tail_distance(), 51);
 
             let mut iter2 = topic.window("iter1", 10);
 
@@ -195,11 +194,13 @@ mod tests {
                 }
             }
             assert_eq!(count, 101);
+            assert_eq!(iter.tail_distance(), 0);
 
             let mut iter3 = topic.window("iter1", 10);
 
             let batch = iter3.next().unwrap();
             assert!(batch.len() == 0);
+            assert_eq!(iter.tail_distance(), 0);
         }
     }
 }

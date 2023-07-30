@@ -6,7 +6,7 @@ pub mod caches;
 pub mod database;
 pub mod errors;
 pub mod handle;
-pub mod iterators;
+pub mod iterator;
 pub mod record;
 pub mod serialization;
 pub mod snapshot;

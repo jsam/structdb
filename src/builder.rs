@@ -172,7 +172,7 @@ mod tests {
         let _db = StructDB::builder("test_table.db", Caches::default())
             .options(|opts, _| {
                 opts.set_level_compaction_dynamic_level_bytes(true);
-        
+
                 opts.set_zstd_max_train_bytes(32 * 1024 * 1024);
                 opts.set_compression_type(rocksdb::DBCompressionType::Zstd);
 
