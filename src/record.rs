@@ -3,7 +3,7 @@ use std::fmt::{Debug, Display};
 use serde::{Deserialize, Serialize};
 use vlseqid::id::BigID;
 
-use crate::{serialization::BinCode, timestamp::Timestamp, topic::TOPIC_KEY_PREFIX};
+use crate::{serialization::BinCode, topic::TOPIC_KEY_PREFIX};
 
 pub type Record = Vec<u8>;
 
@@ -61,24 +61,5 @@ impl SeqRecord {
 
     pub fn is_valid(&self) -> bool {
         self.key.to_string().starts_with(TOPIC_KEY_PREFIX)
-    }
-}
-
-pub struct KVRecord {
-    pub key: String,
-    pub value: Box<[u8]>,
-
-    pub timestamp: Timestamp,
-}
-
-impl KVRecord {
-    pub fn key(&mut self) -> &[u8] {
-        let value = self.key.as_bytes();
-        value
-    }
-
-    pub fn value(&mut self) -> &[u8] {
-        let value = self.value.as_ref();
-        value
     }
 }
