@@ -13,6 +13,5 @@ pub mod snapshot;
 pub mod stats;
 pub mod table;
 pub mod timestamp;
-pub mod wals;
-pub mod window;
+pub mod topic;
 pub mod writer;

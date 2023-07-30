@@ -5,7 +5,7 @@ use vlseqid::id::BigID;
 use crate::database::Database;
 use std::{rc::Rc, sync::Arc};
 
-pub struct WALWriteBuffer<'a> {
+pub struct WriteBuffer<'a> {
     db: &'a Rc<Database>,
     cf: Arc<BoundColumnFamily<'a>>,
     pub last_insert: BigID,
@@ -15,7 +15,7 @@ pub struct WALWriteBuffer<'a> {
     txn_size: u128, // NOTE: specified in bytes
 }
 
-impl<'a> WALWriteBuffer<'a> {
+impl<'a> WriteBuffer<'a> {
     pub const LAST_INSERT_KEY: &'a str = "last-insert";
 
     pub fn new(db: &'a Rc<Database>, cf: Arc<BoundColumnFamily<'a>>) -> Self {
@@ -49,7 +49,7 @@ impl<'a> WALWriteBuffer<'a> {
         // NOTE: Update `last-insert` value.
         batch.put_cf(
             &self.cf,
-            WALWriteBuffer::LAST_INSERT_KEY,
+            WriteBuffer::LAST_INSERT_KEY,
             self.last_insert.to_string(),
         );
         self.db.set_batch(batch)?;

@@ -36,7 +36,8 @@ where
     pub fn new(db: Arc<rocksdb::DB>) -> Self {
         use rocksdb::AsColumnFamilyRef;
 
-        let cf = CfHandle(db.cf_handle(T::NAME).unwrap().inner());
+        let handle = db.cf_handle(T::NAME).unwrap().inner();
+        let cf = CfHandle(handle);
 
         let mut write_config = Default::default();
         T::write_options(&mut write_config);

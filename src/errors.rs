@@ -2,8 +2,6 @@ use crate::builder::Semver;
 
 pub type RocksResult<I> = std::result::Result<I, rocksdb::Error>;
 
-pub type Result<I> = std::result::Result<I, String>;
-
 /// Error type for migration related errors.
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -19,4 +17,12 @@ pub enum Error {
     DuplicateMigration(Semver),
     #[error("db error")]
     DbError(#[from] rocksdb::Error),
+    #[error("column family not found")]
+    ColumnFamilyNotFound(String),
+    #[error("serialization failed")]
+    SerializationFailed(String),
+    #[error("deserialization failed")]
+    DeserializationFailed(String),
 }
+
+pub type Result<I> = std::result::Result<I, Error>;

@@ -1,13 +1,10 @@
 use std::sync::Arc;
 
 use rocksdb::BoundColumnFamily;
-use vlseqid::id::BigID;
 
 use crate::{
     database::Database,
-    errors::Result,
-    iterators::{IteratorState, IteratorType, StreamIterator},
-    window::SlideWindow,
+    errors::{Error, Result},
 };
 
 /// A snapshot of `Database` with specified column family.
@@ -31,44 +28,13 @@ impl<'a> DatabaseSnapshot<'a> {
                     snapshot: db.raw.snapshot(),
                 };
             })
-            .ok_or_else(|| "column family not found".to_string())
-    }
-
-    // Stateless iterator.
-    pub fn iter(&self, from: &BigID) -> StreamIterator {
-        StreamIterator::new(self, IteratorType::Stateless(from.clone()))
-    }
-
-    pub fn set(&self, key: &str, value: &[u8]) -> crate::errors::Result<()> {
-        self.db.set(self.cf_name, key, value)
-    }
-
-    // Statefull iterator.
-    pub fn siter(&self, name: &str) -> crate::errors::Result<StreamIterator> {
-        let iter_state = IteratorState::get(self, name.to_string())?;
-        let iter = StreamIterator::new(self, IteratorType::Stateful(iter_state));
-
-        Ok(iter)
-    }
-
-    pub fn siter_override(
-        &self,
-        override_state: IteratorState,
-    ) -> crate::errors::Result<StreamIterator> {
-        let iter = StreamIterator::new(self, IteratorType::Stateful(override_state));
-        Ok(iter)
-    }
-
-    pub fn window(&self, size: u32, from: &BigID) -> SlideWindow {
-        SlideWindow::new(size, self.iter(from))
+            .ok_or_else(|| Error::ColumnFamilyNotFound(cf_name.to_string()))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use std::fs;
-
-    use vlseqid::id::BigID;
 
     use crate::database::Database;
 
@@ -77,11 +43,11 @@ mod tests {
     #[test]
     fn test_db_snapshot_from() {
         let _ = fs::remove_dir_all("test_db_snapshot_from.db");
-        let mut opts = Default::default();
+        let opts = Default::default();
         let descriptors = vec![rocksdb::ColumnFamilyDescriptor::new("test_table", opts)];
         let db = Database::open(
             "test_db_snapshot_from.db",
-            &rocksdb::Options::default(),
+            &mut rocksdb::Options::default(),
             descriptors,
         )
         .unwrap();
@@ -90,58 +56,5 @@ mod tests {
 
         let snap = DatabaseSnapshot::new(&db, cf_name).unwrap();
         assert_eq!(snap.cf_name, "stream1");
-    }
-
-    #[test]
-    fn test_snapshot_iteration() {
-        let _ = fs::remove_dir_all("test_snapshot_iteration.db");
-        let mut opts = Default::default();
-        let descriptors = vec![rocksdb::ColumnFamilyDescriptor::new("test_table", opts)];
-        let _db = Database::open(
-            "test_snapshot_iteration.db",
-            &rocksdb::Options::default(),
-            descriptors,
-        )
-        .unwrap();
-        let _ = _db.create_cf("0");
-
-        let metadata = BigID::metadata();
-        let _ = _db.set(
-            "0",
-            metadata.to_string().as_str(),
-            "head=000".to_string().as_bytes(),
-        );
-
-        let mut start = BigID::default();
-        for i in 0..1e3 as u32 {
-            let _ = _db.set(
-                "0",
-                start.to_string().as_str(),
-                format!("value_{0}", i).as_bytes(),
-            );
-            start = start.next();
-        }
-        let _ = _db.set(
-            "0",
-            metadata.to_string().as_str(),
-            "iterator=123".to_string().as_bytes(),
-        );
-
-        let snapshot = DatabaseSnapshot::new(&_db, "0");
-        assert!(snapshot.is_ok());
-
-        let raw_snapshot = snapshot.unwrap();
-        let iter = raw_snapshot.iter(&BigID::default());
-
-        let iter = (0_u32..).zip(iter.raw_iter);
-        for (count, result) in iter {
-            let (key, value) = result.unwrap();
-            let _key = String::from_utf8(key.to_vec()).unwrap();
-            let _value = String::from_utf8(value.to_vec()).unwrap();
-            assert_eq!(format!("value_{0}", count), _value);
-
-            let _debug = format!("key={0}, value={1}, count={2}", _key, _value, count);
-            println!("{}", _debug);
-        }
     }
 }

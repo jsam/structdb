@@ -6,6 +6,7 @@ use crate::{
     errors::Error,
     stats::Stats,
     table::{Table, TableImpl},
+    topic::{Topic, TopicImpl},
 };
 
 /// The simplest stored semver.
@@ -69,7 +70,7 @@ impl Builder {
         self
     }
 
-    pub fn with_table<T>(mut self) -> Self
+    pub fn with_struct<T>(mut self) -> Self
     where
         T: Table,
     {
@@ -81,7 +82,8 @@ impl Builder {
     }
 
     pub fn build(self) -> Result<StructDB, rocksdb::Error> {
-        let db = Database::open(self.path, &self.options, self.descriptors)?;
+        let mut opts = self.options.clone();
+        let db = Database::open(self.path, &mut opts, self.descriptors)?;
 
         Ok(StructDB {
             db: db,
@@ -102,6 +104,10 @@ impl StructDB {
 
     pub fn make_table<T: Table>(&self) -> TableImpl<T> {
         TableImpl::new(self.db.raw.clone())
+    }
+
+    pub fn make_topic<T: Topic>(&self) -> TopicImpl<T> {
+        TopicImpl::new(self.make_table::<T>())
     }
 
     pub fn stats(&self) -> Result<Stats, rocksdb::Error> {
@@ -157,20 +163,16 @@ mod tests {
             opts.set_optimize_filters_for_hits(true);
         }
 
-        // Modify read options
         fn read_options(opts: &mut rocksdb::ReadOptions) {
             opts.set_verify_checksums(false);
         }
 
-        // Modify write options
-        fn write_options(opts: &mut rocksdb::WriteOptions) {
-            // ...
-        }
+        fn write_options(_opts: &mut rocksdb::WriteOptions) {}
     }
 
     #[test]
     fn test_table() {
-        let db = StructDB::builder("test_table.db", Caches::default())
+        let _db = StructDB::builder("test_table.db", Caches::default())
             .options(|opts, _| {
                 opts.set_level_compaction_dynamic_level_bytes(true);
 
@@ -187,7 +189,7 @@ mod tests {
                 opts.create_if_missing(true);
                 opts.create_missing_column_families(true);
             })
-            .with_table::<MyTable>()
+            .with_struct::<MyTable>()
             .build()
             .unwrap();
     }

@@ -1,6 +1,6 @@
 use std::{path::Path, sync::Arc};
 
-use crate::errors::{Result, RocksResult};
+use crate::errors::{Error, Result, RocksResult};
 use rocksdb::{
     BoundColumnFamily, ColumnFamilyDescriptor, DBIteratorWithThreadMode, DBWithThreadMode,
     IteratorMode, MultiThreaded, WriteBatch,
@@ -28,9 +28,12 @@ impl Database {
     /// Creates a database object and corresponding filesystem elements.
     pub fn open<P: AsRef<Path>, I: IntoIterator<Item = ColumnFamilyDescriptor>>(
         path: P,
-        options: &rocksdb::Options,
+        options: &mut rocksdb::Options,
         cfd: I,
     ) -> RocksResult<Self> {
+        options.create_if_missing(true);
+        options.create_missing_column_families(true);
+
         let db = Arc::new(rocksdb::DB::open_cf_descriptors(&options, path, cfd)?);
 
         Ok(Database {
@@ -55,10 +58,18 @@ impl Database {
     }
 
     /// Creates new column family.
-    pub fn create_cf(&self, name: &str) -> RocksResult<()> {
-        self.raw.create_cf(name, &self.options)?;
+    pub fn create_cf(&self, name: &str) -> Result<Arc<BoundColumnFamily>> {
+        self.raw
+            .create_cf(name, &self.options)
+            .map_err(|err| Error::DbError(err))?;
+        self.raw.flush().map_err(|err| Error::DbError(err))?;
 
-        self.raw.flush().map_err(Into::into)
+        match self.raw.cf_handle(name) {
+            Some(handle) => {
+                return Ok(handle);
+            }
+            None => return Err(Error::ColumnFamilyNotFound(name.to_string())),
+        }
     }
 
     /// Drop column family with a given name.
@@ -70,7 +81,11 @@ impl Database {
     pub fn set(&self, cf_name: &str, key: &str, value: &[u8]) -> Result<()> {
         let cf = match self.get_cf(cf_name) {
             Some(cf) => cf,
-            None => return Err("column family not found".to_string()),
+            None => {
+                return Err(Error::ColumnFamilyNotFound(
+                    "column family not found".to_string(),
+                ))
+            }
         };
 
         self.raw.put_cf(&cf, key, value).map_err(Into::into)
@@ -85,7 +100,11 @@ impl Database {
     pub fn get(&self, cf_name: &str, key: &str) -> Result<Option<Vec<u8>>> {
         let cf = match self.get_cf(cf_name) {
             Some(cf) => cf,
-            None => return Err("column family not found".to_string()),
+            None => {
+                return Err(Error::ColumnFamilyNotFound(
+                    "column family not found".to_string(),
+                ))
+            }
         };
 
         self.raw.get_cf(&cf, key).map_err(Into::into)
@@ -95,7 +114,11 @@ impl Database {
     pub fn delete(&self, cf_name: &str, key: &str) -> Result<()> {
         let cf = match self.get_cf(cf_name) {
             Some(cf) => cf,
-            None => return Err("column family not found".to_string()),
+            None => {
+                return Err(Error::ColumnFamilyNotFound(
+                    "column family not found".to_string(),
+                ))
+            }
         };
 
         self.raw.delete_cf(&cf, key).map_err(Into::into)
@@ -108,7 +131,11 @@ impl Database {
     ) -> Result<DBIteratorWithThreadMode<DBWithThreadMode<MultiThreaded>>> {
         let cf = match self.get_cf(cf_name) {
             Some(cf) => cf,
-            None => return Err("column family not found".to_string()),
+            None => {
+                return Err(Error::ColumnFamilyNotFound(
+                    "column family not found".to_string(),
+                ))
+            }
         };
 
         let iter = self.raw.iterator_cf(&cf, IteratorMode::Start);
@@ -130,7 +157,7 @@ mod tests {
         {
             let db = Database::open(
                 "test_rdb_open.db",
-                &rocksdb::Options::default(),
+                &mut rocksdb::Options::default(),
                 vec![rocksdb::ColumnFamilyDescriptor::new(
                     "test_table",
                     Default::default(),
@@ -142,36 +169,39 @@ mod tests {
         {
             let db1 = Database::open(
                 "test_rdb_open.db",
-                &rocksdb::Options::default(),
+                &mut rocksdb::Options::default(),
                 vec![rocksdb::ColumnFamilyDescriptor::new(
                     "test_table",
                     Default::default(),
                 )],
             );
-            let err = db1.err();
-            //assert!(db1.is_ok());
+            assert!(db1.is_ok());
 
             let db2 = Database::open(
                 "test_rdb_open.db",
-                &rocksdb::Options::default(),
+                &mut rocksdb::Options::default(),
                 vec![rocksdb::ColumnFamilyDescriptor::new(
                     "test_table",
                     Default::default(),
                 )],
             );
-            assert!(db2.is_err());
-            //assert!(db2.err().unwrap().contains("lock hold by current process"));
+            let err = db2.err();
+            assert!(err.is_some());
+
+            err.map(|err| {
+                assert!(err.to_string().contains("lock hold by current process"));
+            });
         }
     }
 
     #[test]
     fn test_create_delete_cf() {
         let _ = fs::remove_dir_all("test_create_column_family.db");
-        let mut opts = Default::default();
+        let opts = Default::default();
         let descriptors = vec![rocksdb::ColumnFamilyDescriptor::new("test_table", opts)];
         let db = Database::open(
             "test_create_column_family.db",
-            &rocksdb::Options::default(),
+            &mut rocksdb::Options::default(),
             descriptors,
         );
         assert!(db.is_ok());
@@ -190,12 +220,12 @@ mod tests {
     #[test]
     fn test_list_cf() {
         let _ = fs::remove_dir_all("test_list_cf.db");
-        let expected = vec!["default", "stream1", "stream2", "stream3"];
+        let expected = vec!["default", "test_table", "stream1", "stream2", "stream3"];
 
         {
             let db = Database::open(
                 "test_list_cf.db",
-                &rocksdb::Options::default(),
+                &mut rocksdb::Options::default(),
                 vec![rocksdb::ColumnFamilyDescriptor::new(
                     "test_table",
                     Default::default(),
@@ -216,26 +246,48 @@ mod tests {
             assert_eq!(received, expected);
         }
 
-        let new_db = Database::open(
-            "test_list_cf.db",
-            &rocksdb::Options::default(),
-            vec![rocksdb::ColumnFamilyDescriptor::new(
-                "test_table",
-                Default::default(),
-            )],
-        )
-        .unwrap();
-        assert_eq!(new_db.list_cf().unwrap(), expected);
+        {
+            // NOTE: Check that column families are not opened.
+            let new_db =
+                Database::open("test_list_cf.db", &mut rocksdb::Options::default(), vec![]);
+
+            assert!(new_db.is_err());
+            let _ = new_db.map_err(|open_err| {
+                assert!(open_err.to_string().contains("Invalid argument: Column families not opened: stream3, stream2, stream1, test_table"));
+            });
+        }
+
+        {
+            // NOTE: Check that column families are opened.
+            let new_db = Database::open(
+                "test_list_cf.db",
+                &mut rocksdb::Options::default(),
+                vec![
+                    rocksdb::ColumnFamilyDescriptor::new("test_table", Default::default()),
+                    rocksdb::ColumnFamilyDescriptor::new("stream1", Default::default()),
+                    rocksdb::ColumnFamilyDescriptor::new("stream2", Default::default()),
+                    rocksdb::ColumnFamilyDescriptor::new("stream3", Default::default()),
+                ],
+            );
+
+            assert!(new_db.is_ok());
+            let new_db = new_db.unwrap();
+            assert_eq!(new_db.list_cf().unwrap(), expected);
+        }
     }
 
     #[test]
     fn test_set_get() {
         let _ = fs::remove_dir_all("test_set_get.db");
-        let mut opts = Default::default();
+        let opts = Default::default();
         let descriptors = vec![rocksdb::ColumnFamilyDescriptor::new("test_table", opts)];
 
-        let db =
-            Database::open("test_set_get.db", &rocksdb::Options::default(), descriptors).unwrap();
+        let db = Database::open(
+            "test_set_get.db",
+            &mut rocksdb::Options::default(),
+            descriptors,
+        )
+        .unwrap();
         let cf_name = "stream1";
         let _ = db.create_cf(cf_name);
 
