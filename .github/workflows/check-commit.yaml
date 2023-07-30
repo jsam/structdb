@@ -13,6 +13,7 @@ concurrency:
 jobs:
   check-commit:
     if: github.event.pull_request.merge == false
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: true
       matrix:
