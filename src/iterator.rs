@@ -3,7 +3,7 @@ use vlseqid::id::BigID;
 use crate::{
     record::SeqRecord,
     table::Table,
-    topic::{TopicImpl, TOPIC_KEY_PREFIX, TOPIC_LAST_INSERT_KEY},
+    topic::{TopicImpl, TOPIC_ITERATOR_KEY_PREFIX, TOPIC_KEY_PREFIX},
 };
 
 pub trait BatchIterator {
@@ -45,7 +45,7 @@ where
 }
 
 fn iter_checkpoint<T: Table>(name: &str, topic: &Box<&TopicImpl<T>>) -> String {
-    let last_iter = format!("{}:{}", TOPIC_LAST_INSERT_KEY, name);
+    let last_iter = format!("{}:{}", TOPIC_ITERATOR_KEY_PREFIX, name);
 
     let result = topic.table.get(last_iter.as_bytes());
     let start_from = match result {
@@ -97,7 +97,7 @@ where
 
         match result.last() {
             Some(last) => {
-                let key = format!("{}:{}", TOPIC_LAST_INSERT_KEY, self.name);
+                let key = format!("{}:{}", TOPIC_ITERATOR_KEY_PREFIX, self.name);
                 let key_ser = key.as_bytes();
 
                 let value = last.key.to_string();

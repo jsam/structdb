@@ -5,7 +5,7 @@ use crate::iterator::TopicIter;
 use crate::record::{Record, SeqRecord};
 use crate::table::{Table, TableImpl};
 
-pub const TOPIC_ITERATOR_KEY_PREFIX: &str = "iterator";
+pub const TOPIC_ITERATOR_KEY_PREFIX: &str = "iter";
 pub const TOPIC_KEY_PREFIX: &str = "topic";
 pub const TOPIC_LAST_INSERT_KEY: &str = "last";
 
@@ -22,11 +22,36 @@ where
     T: Topic,
 {
     pub fn new(table: TableImpl<T>) -> Self {
-        Self {
+        let mut topic = Self {
             table: table,
             stream_name: T::NAME.to_owned(),
             last_insert: BigID::new(Some(TOPIC_KEY_PREFIX.to_string())),
+        };
+        topic.seek_last();
+
+        topic
+    }
+
+    fn seek_last(&mut self) {
+        let mut iter = self.table.prefix_iterator(TOPIC_KEY_PREFIX);
+        loop {
+            if !iter.valid() {
+                break;
+            }
+            let item = iter.item();
+            if item.is_none() {
+                break;
+            }
+
+            let record = SeqRecord::from(item);
+            if record.is_valid() {
+                self.last_insert = record.key;
+            }
+
+            iter.next();
         }
+
+        self.last_insert = self.last_insert.next();
     }
 
     pub fn append(&mut self, value: &Record) -> Result<SeqRecord> {
@@ -67,6 +92,7 @@ mod tests {
 
     #[test]
     fn test_topic_write() {
+        let _ = fs::remove_dir_all("test_topic_write.db");
         let db = StructDB::builder("test_topic_write.db", Caches::default())
             .with_struct::<MyTopic>()
             .build();
@@ -78,6 +104,67 @@ mod tests {
         let value = "topic-value-1".to_bytes().unwrap();
         let result = topic.append(&value);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_topic_write_continuously() {
+        let _ = fs::remove_dir_all("test_topic_write_continuously.db");
+        let db = StructDB::builder("test_topic_write_continuously.db", Caches::default())
+            .with_struct::<MyTopic>()
+            .build()
+            .unwrap();
+        // assert!(db.is_ok());
+
+        // let db = db.unwrap();
+
+        {
+            let mut topic = db.make_topic::<MyTopic>();
+
+            for i in 0..100 {
+                let value = format!("topic-value-{}", i).to_bytes().unwrap();
+                let result = topic.append(&value);
+                assert!(result.is_ok());
+
+                let record = result.unwrap();
+                assert!(record.is_valid());
+            }
+        }
+
+        {
+            let mut topic = db.make_topic::<MyTopic>();
+
+            for i in 100..200 {
+                let value = format!("topic-value-{}", i).to_bytes().unwrap();
+                let result = topic.append(&value);
+                assert!(result.is_ok());
+
+                let record = result.unwrap();
+                assert!(record.is_valid());
+            }
+        }
+
+        {
+            let topic = db.make_topic::<MyTopic>();
+            let mut iter = topic.window("iter1", 10);
+
+            let mut count = 0;
+            loop {
+                let batch = iter.next().unwrap();
+                if batch.is_empty() {
+                    break;
+                }
+                assert!(batch.len() == 10 || batch.len() == 1);
+
+                for record in batch.iter() {
+                    let view = String::from_bytes(record.value.clone().as_mut_slice()).unwrap();
+                    //println!("PREFIX FIX VIEW: {:?} == {:?}", view, "topic");
+                    let received = format!("topic-value-{}", count);
+                    assert_eq!(received, view);
+                    count += 1;
+                }
+            }
+            assert_eq!(count, 200);
+        }
     }
 
     #[test]
