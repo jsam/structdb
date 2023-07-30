@@ -1,4 +1,4 @@
-use crate::builder::Semver;
+use crate::builder::Version;
 
 pub type RocksResult<I> = std::result::Result<I, rocksdb::Error>;
 
@@ -6,15 +6,15 @@ pub type RocksResult<I> = std::result::Result<I, rocksdb::Error>;
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("incompatible DB version")]
-    IncompatibleDbVersion { version: Semver, expected: Semver },
+    IncompatibleDbVersion { version: Version, expected: Version },
     #[error("existing DB version not found")]
     VersionNotFound,
     #[error("invalid version")]
     InvalidDbVersion,
     #[error("migration not found: {0:?}")]
-    MigrationNotFound(Semver),
+    MigrationNotFound(Version),
     #[error("duplicate migration: {0:?}")]
-    DuplicateMigration(Semver),
+    DuplicateMigration(Version),
     #[error("db error")]
     DbError(#[from] rocksdb::Error),
     #[error("column family not found")]

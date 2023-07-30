@@ -1,7 +1,7 @@
 use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 
 use crate::{
-    builder::{DefaultVersionProvider, Migration, Semver, StructDB, VersionProvider},
+    builder::{DefaultVersionProvider, Migration, Version, StructDB, VersionProvider},
     errors::Error,
 };
 
@@ -70,13 +70,13 @@ unsafe impl Send for CfHandle {}
 unsafe impl Sync for CfHandle {}
 
 pub struct Migrations<P> {
-    pub target_version: Semver,
-    migrations: HashMap<Semver, Migration>,
+    pub target_version: Version,
+    migrations: HashMap<Version, Migration>,
     pub version_provider: P,
 }
 
 impl Migrations<DefaultVersionProvider> {
-    pub fn with_target_version(target_version: Semver) -> Self {
+    pub fn with_target_version(target_version: Version) -> Self {
         Self {
             target_version,
             migrations: Default::default(),
@@ -86,7 +86,7 @@ impl Migrations<DefaultVersionProvider> {
 }
 
 impl<P: VersionProvider> Migrations<P> {
-    pub fn with_target_version_and_provider(target_version: Semver, version_provider: P) -> Self {
+    pub fn with_target_version_and_provider(target_version: Version, version_provider: P) -> Self {
         Self {
             target_version,
             migrations: Default::default(),
@@ -94,7 +94,7 @@ impl<P: VersionProvider> Migrations<P> {
         }
     }
 
-    pub fn register<F>(&mut self, from: Semver, to: Semver, migration: F) -> Result<(), Error>
+    pub fn register<F>(&mut self, from: Version, to: Version, migration: F) -> Result<(), Error>
     where
         F: Fn(&StructDB) -> Result<(), Error> + 'static,
     {

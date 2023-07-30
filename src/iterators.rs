@@ -6,12 +6,6 @@ use crate::{
     topic::{TOPIC_KEY_PREFIX, TOPIC_LAST_INSERT_KEY},
 };
 
-#[derive(Clone)]
-pub enum IterType {
-    Stateless(BigID),
-    Stateful(String),
-}
-
 pub trait BatchIterator {
     type Item;
 

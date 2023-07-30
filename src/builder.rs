@@ -9,14 +9,13 @@ use crate::{
     topic::{Topic, TopicImpl},
 };
 
-/// The simplest stored semver.
-pub type Semver = [u8; 3];
+pub type Version = [u8; 3];
 
-pub type Migration = Box<dyn Fn(&StructDB) -> Result<Semver, Error>>;
+pub type Migration = Box<dyn Fn(&StructDB) -> Result<Version, Error>>;
 
 pub trait VersionProvider {
-    fn get_version(&self, db: &StructDB) -> Result<Option<Semver>, Error>;
-    fn set_version(&self, db: &StructDB, version: Semver) -> Result<(), Error>;
+    fn get_version(&self, db: &StructDB) -> Result<Option<Version>, Error>;
+    fn set_version(&self, db: &StructDB, version: Version) -> Result<(), Error>;
 }
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -27,7 +26,7 @@ impl DefaultVersionProvider {
 }
 
 impl VersionProvider for DefaultVersionProvider {
-    fn get_version(&self, db: &StructDB) -> Result<Option<Semver>, Error> {
+    fn get_version(&self, db: &StructDB) -> Result<Option<Version>, Error> {
         match db.db.raw.get(Self::DB_VERSION_KEY)? {
             Some(version) => version
                 .try_into()
@@ -37,7 +36,7 @@ impl VersionProvider for DefaultVersionProvider {
         }
     }
 
-    fn set_version(&self, db: &StructDB, version: Semver) -> Result<(), Error> {
+    fn set_version(&self, db: &StructDB, version: Version) -> Result<(), Error> {
         db.db
             .raw
             .put(Self::DB_VERSION_KEY, version)
@@ -146,10 +145,8 @@ mod tests {
     struct MyTable;
 
     impl Table for MyTable {
-        // Column family name
         const NAME: &'static str = "my_table11233";
 
-        // Modify general options
         fn options(opts: &mut rocksdb::Options, caches: &Caches) {
             opts.set_write_buffer_size(128 * 1024 * 1024);
 
@@ -175,17 +172,14 @@ mod tests {
         let _db = StructDB::builder("test_table.db", Caches::default())
             .options(|opts, _| {
                 opts.set_level_compaction_dynamic_level_bytes(true);
-
-                // Compression opts
+        
                 opts.set_zstd_max_train_bytes(32 * 1024 * 1024);
                 opts.set_compression_type(rocksdb::DBCompressionType::Zstd);
 
-                // Logging
                 opts.set_log_level(rocksdb::LogLevel::Error);
                 opts.set_keep_log_file_num(2);
                 opts.set_recycle_log_file_num(2);
 
-                // Cfs
                 opts.create_if_missing(true);
                 opts.create_missing_column_families(true);
             })
