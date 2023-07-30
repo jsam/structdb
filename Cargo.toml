@@ -26,5 +26,5 @@ tokio = "1.20.0"
 criterion = { version = "0.3", features = ["html_reports", "async_tokio"]}
 
 [[bench]]
-name = "bench_wals"
+name = "bench_topic"
 harness = false
