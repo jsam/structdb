@@ -48,9 +48,15 @@ jobs:
           command: check
           args: --all --bins --examples --tests
 
+      - name: Run test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --all --bins --examples --tests
+
   check_components:
     if: github.event.pull_request.merged == false
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     name: Check Components
     steps:
       - uses: actions/checkout@master
