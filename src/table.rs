@@ -7,6 +7,8 @@ use crate::caches::Caches;
 pub trait Table {
     const NAME: &'static str;
 
+    fn shard(&self, name: &str) {}
+
     fn options(opts: &mut rocksdb::Options, caches: &Caches) {
         let _unused = opts;
         let _unused = caches;
@@ -22,6 +24,8 @@ pub trait Table {
 }
 
 pub struct TableImpl<T> {
+    pub name: String,
+    //
     cf: CfHandle,
     db: Arc<rocksdb::DB>,
     write_config: rocksdb::WriteOptions,
@@ -33,10 +37,28 @@ impl<T> TableImpl<T>
 where
     T: Table,
 {
-    pub fn new(db: Arc<rocksdb::DB>) -> Self {
+    pub fn new(db: Arc<rocksdb::DB>, shard: Option<&'static str>) -> Self {
         use rocksdb::AsColumnFamilyRef;
 
-        let handle = db.cf_handle(T::NAME).unwrap().inner();
+        let name = match shard {
+            Some(suffix) => format!("{}_{}", T::NAME, suffix),
+            None => format!("{}", T::NAME),
+        };
+
+        let handle = match db.cf_handle(name.as_ref()) {
+            Some(handle) => handle.inner(),
+            None => {
+                let mut opts = Default::default();
+                T::options(&mut opts, &Caches::default());
+
+                db.create_cf(name.clone(), &opts)
+                    .expect("failed to create cf");
+
+                db.cf_handle(name.as_ref())
+                    .expect("cf created but not found")
+                    .inner()
+            }
+        };
         let cf = CfHandle(handle);
 
         let mut write_config = Default::default();
@@ -48,6 +70,7 @@ where
         Self {
             cf,
             db,
+            name,
             write_config,
             read_config,
             _ty: Default::default(),
