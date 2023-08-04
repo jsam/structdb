@@ -1,9 +1,11 @@
 use std::fmt::{Debug, Display};
 
+use arrow::datatypes::Field;
+use nummer::NDArray;
 use serde::{Deserialize, Serialize};
 use vlseqid::id::BigID;
 
-use crate::{serialization::BinCode, topic::TOPIC_KEY_PREFIX};
+use crate::{serialization::BinCode, topic::TOPIC_KEY_PREFIX, timestamp::Timestamp};
 
 pub type Record = Vec<u8>;
 
@@ -63,3 +65,34 @@ impl SeqRecord {
         self.key.to_string().starts_with(TOPIC_KEY_PREFIX)
     }
 }
+
+pub struct ValueIteration {
+    pub revision: u64,
+    pub version: u64,
+}
+
+pub struct RDFValue {
+    subject: Field,
+    predicate: Field,
+    object: Field,
+
+    iteration: ValueIteration,
+    created_at: Timestamp,
+}
+
+impl BinCode for RDFValue {}
+
+pub struct TensorValue<T> 
+where
+    T: Clone + Default
+{
+    tensor: NDArray<T>,
+
+    iteration: ValueIteration,
+    created_at: Timestamp,
+}
+
+impl<T> BinCode for TensorValue<T> 
+where
+    T: Clone + Default
+{}
