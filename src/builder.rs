@@ -102,11 +102,19 @@ impl StructDB {
     }
 
     pub fn make_table<T: Table>(&self) -> TableImpl<T> {
-        TableImpl::new(self.db.raw.clone())
+        TableImpl::new(self.db.raw.clone(), None)
+    }
+
+    pub fn make_sharded_table<T: Table>(&self, shard: &'static str) -> TableImpl<T> {
+        TableImpl::new(self.db.raw.clone(), Some(shard))
     }
 
     pub fn make_topic<T: Topic>(&self) -> TopicImpl<T> {
         TopicImpl::new(self.make_table::<T>())
+    }
+
+    pub fn make_sharded_topic<T: Topic>(&self, shard: &'static str) -> TopicImpl<T> {
+        TopicImpl::new(self.make_sharded_table::<T>(shard))
     }
 
     pub fn stats(&self) -> Result<Stats, rocksdb::Error> {
@@ -138,6 +146,8 @@ impl StructDB {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
     use crate::{caches::Caches, table::Table};
 
     use super::StructDB;
@@ -145,7 +155,7 @@ mod tests {
     struct MyTable;
 
     impl Table for MyTable {
-        const NAME: &'static str = "my_table11233";
+        const NAME: &'static str = "my_table";
 
         fn options(opts: &mut rocksdb::Options, caches: &Caches) {
             opts.set_write_buffer_size(128 * 1024 * 1024);
@@ -169,6 +179,8 @@ mod tests {
 
     #[test]
     fn test_table() {
+        let _ = fs::remove_dir_all("test_table.db");
+
         let _db = StructDB::builder("test_table.db", Caches::default())
             .options(|opts, _| {
                 opts.set_level_compaction_dynamic_level_bytes(true);

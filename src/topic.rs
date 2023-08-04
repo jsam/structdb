@@ -13,7 +13,6 @@ pub trait Topic: Table {}
 
 pub struct TopicImpl<T> {
     pub table: TableImpl<T>,
-    pub stream_name: String,
     pub last_insert: BigID,
 }
 
@@ -24,7 +23,6 @@ where
     pub fn new(table: TableImpl<T>) -> Self {
         let mut topic = Self {
             table: table,
-            stream_name: T::NAME.to_owned(),
             last_insert: BigID::new(Some(TOPIC_KEY_PREFIX.to_string())),
         };
         topic.seek_last();
@@ -104,6 +102,27 @@ mod tests {
         let value = "topic-value-1".to_bytes().unwrap();
         let result = topic.append(&value);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_topic_write_sharded() {
+        let _ = fs::remove_dir_all("test_topic_write_sharded.db");
+        let db = StructDB::builder("test_topic_write_sharded.db", Caches::default())
+            .with_struct::<MyTopic>()
+            .build();
+        assert!(db.is_ok());
+
+        let db = db.unwrap();
+        let _ = db.make_topic::<MyTopic>();
+        let _ = db.make_sharded_topic::<MyTopic>("shard1");
+        let _ = db.make_sharded_topic::<MyTopic>("shard1");
+        let _ = db.make_sharded_topic::<MyTopic>("shard2");
+
+        let expected = db.db.list_cf().expect("list_cf failed");
+        assert_eq!(
+            expected,
+            vec!["default", "my-topic", "my-topic_shard1", "my-topic_shard2"]
+        );
     }
 
     #[test]
