@@ -13,6 +13,7 @@ serde = { version = "1.0", features = ["derive"]}
 librocksdb-sys = "0.11.0"
 thiserror = "1.0.44"
 vlseqid = "0.2.0"
+nummer = "0.2.1"
 
 
 [dependencies.rocksdb]
@@ -20,6 +21,24 @@ version = "0.21"
 default-features = false
 features = ["multi-threaded-cf", "lz4"]
 
+
+[dependencies.arrow]
+package = "arrow2"
+git = "https://github.com/jorgecarleitao/arrow2"
+rev = "d5c78e7ba45fcebfbafd55a82ba2601ee3ea9617"
+version = "0.17.2"
+default-features = false
+features = [
+  "compute_aggregate",
+  "compute_arithmetics",
+  "compute_boolean",
+  "compute_boolean_kleene",
+  "compute_cast",
+  "compute_comparison",
+  "compute_concatenate",
+  "compute_filter",
+  "compute_if_then_else",
+]
 
 [dev-dependencies]
 tokio = "1.20.0"
