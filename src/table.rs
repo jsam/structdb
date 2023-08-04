@@ -7,8 +7,6 @@ use crate::caches::Caches;
 pub trait Table {
     const NAME: &'static str;
 
-    fn shard(&self, name: &str) {}
-
     fn options(opts: &mut rocksdb::Options, caches: &Caches) {
         let _unused = opts;
         let _unused = caches;
