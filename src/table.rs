@@ -35,7 +35,7 @@ impl<T> TableImpl<T>
 where
     T: Table,
 {
-    pub fn new(db: Arc<rocksdb::DB>, shard: Option<&'static str>) -> Self {
+    pub fn new(db: Arc<rocksdb::DB>, shard: Option<&String>) -> Self {
         use rocksdb::AsColumnFamilyRef;
 
         let name = match shard {

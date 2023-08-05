@@ -114,9 +114,9 @@ mod tests {
 
         let db = db.unwrap();
         let _ = db.make_topic::<MyTopic>();
-        let _ = db.make_sharded_topic::<MyTopic>("shard1");
-        let _ = db.make_sharded_topic::<MyTopic>("shard1");
-        let _ = db.make_sharded_topic::<MyTopic>("shard2");
+        let _ = db.make_sharded_topic::<MyTopic>(&"shard1".to_string());
+        let _ = db.make_sharded_topic::<MyTopic>(&"shard1".to_string());
+        let _ = db.make_sharded_topic::<MyTopic>(&"shard2".to_string());
 
         let expected = db.db.list_cf().expect("list_cf failed");
         assert_eq!(
