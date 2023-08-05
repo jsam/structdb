@@ -13,7 +13,7 @@ pub trait Topic: Table {}
 
 pub struct TopicImpl<T> {
     pub table: TableImpl<T>,
-    pub last_insert: BigID,
+    pub next_insert: BigID,
 }
 
 impl<T> TopicImpl<T>
@@ -23,7 +23,7 @@ where
     pub fn new(table: TableImpl<T>) -> Self {
         let mut topic = Self {
             table: table,
-            last_insert: BigID::new(Some(TOPIC_KEY_PREFIX.to_string())),
+            next_insert: BigID::new(Some(TOPIC_KEY_PREFIX.to_string())),
         };
         topic.seek_last();
 
@@ -43,24 +43,24 @@ where
 
             let record = SeqRecord::from(item);
             if record.is_valid() {
-                self.last_insert = record.key;
+                self.next_insert = record.key;
             }
 
             iter.next();
         }
 
-        self.last_insert = self.last_insert.next();
+        self.next_insert = self.next_insert.next();
     }
 
     pub fn append(&mut self, value: &Record) -> Result<SeqRecord> {
-        let key = self.last_insert.to_string();
+        let key = self.next_insert.to_string();
 
         self.table
             .insert(key, value)
             .map_err(|err| Error::DbError(err))?;
 
-        self.last_insert = self.last_insert.next();
-        Ok(SeqRecord::new(self.last_insert.clone(), value.clone()))
+        self.next_insert = self.next_insert.next();
+        Ok(SeqRecord::new(self.next_insert.clone(), value.clone()))
     }
 
     pub fn window(&'_ self, name: &str, batch_size: usize) -> TopicIter<'_, T> {

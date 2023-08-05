@@ -113,7 +113,7 @@ where
 
     fn tail_distance(&self) -> u128 {
         // TODO: Last insert should also be persisted so that when restarted, we continue inserting into the right place.
-        let last_insert = self.topic.last_insert.clone();
+        let last_insert = self.topic.next_insert.clone();
         let checkpoint = iter_checkpoint(self.name.as_ref(), &self.topic);
         let checkpoint = BigID::from(checkpoint.as_ref());
         last_insert.distance(&checkpoint)
