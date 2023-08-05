@@ -105,7 +105,7 @@ impl StructDB {
         TableImpl::new(self.db.raw.clone(), None)
     }
 
-    pub fn make_sharded_table<T: Table>(&self, shard: &'static str) -> TableImpl<T> {
+    pub fn make_sharded_table<T: Table>(&self, shard: &String) -> TableImpl<T> {
         TableImpl::new(self.db.raw.clone(), Some(shard))
     }
 
@@ -113,7 +113,7 @@ impl StructDB {
         TopicImpl::new(self.make_table::<T>())
     }
 
-    pub fn make_sharded_topic<T: Topic>(&self, shard: &'static str) -> TopicImpl<T> {
+    pub fn make_sharded_topic<T: Topic>(&self, shard: &String) -> TopicImpl<T> {
         TopicImpl::new(self.make_sharded_table::<T>(shard))
     }
 
