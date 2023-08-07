@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Display};
 
+use byte_counter::counter::ByteCounter;
 use serde::{Deserialize, Serialize};
-use vlseqid::id::BigID;
 
 use crate::{serialization::BinCode, topic::TOPIC_KEY_PREFIX};
 
@@ -11,7 +11,7 @@ impl BinCode for Record {}
 
 #[derive(Serialize, Deserialize, Clone, Hash, PartialEq, Eq)]
 pub struct SeqRecord {
-    pub key: BigID,
+    pub key: ByteCounter,
     pub value: Record,
 }
 
@@ -36,14 +36,14 @@ impl Display for SeqRecord {
 impl From<Option<(&[u8], &[u8])>> for SeqRecord {
     fn from(value: Option<(&[u8], &[u8])>) -> Self {
         if let Some((key, value)) = value {
-            let kk = std::str::from_utf8(key).unwrap();
-            let key = BigID::from(kk);
+            let key_str = String::from_utf8_lossy(key).to_string();
+            let key = ByteCounter::from(&key_str);
             let value = value.to_vec();
 
             Self { key, value }
         } else {
             Self {
-                key: BigID::default(),
+                key: ByteCounter::default(),
                 value: vec![],
             }
         }
@@ -51,7 +51,7 @@ impl From<Option<(&[u8], &[u8])>> for SeqRecord {
 }
 
 impl SeqRecord {
-    pub fn new(key: BigID, value: Vec<u8>) -> Self {
+    pub fn new(key: ByteCounter, value: Vec<u8>) -> Self {
         Self { key, value }
     }
 

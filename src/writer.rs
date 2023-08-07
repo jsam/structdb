@@ -1,6 +1,6 @@
 use crate::errors::Result;
+use byte_counter::counter::ByteCounter;
 use rocksdb::{BoundColumnFamily, WriteBatch};
-use vlseqid::id::BigID;
 
 use crate::database::Database;
 use std::{rc::Rc, sync::Arc};
@@ -8,7 +8,7 @@ use std::{rc::Rc, sync::Arc};
 pub struct WriteBuffer<'a> {
     db: &'a Rc<Database>,
     cf: Arc<BoundColumnFamily<'a>>,
-    pub last_insert: BigID,
+    pub last_insert: ByteCounter,
 
     buffer: Vec<Vec<u8>>,
     buffer_size: u128,
@@ -22,7 +22,7 @@ impl<'a> WriteBuffer<'a> {
         Self {
             db,
             cf,
-            last_insert: BigID::default(),
+            last_insert: ByteCounter::default(),
             buffer: vec![],
             buffer_size: 0,
             txn_size: 64512,
@@ -42,7 +42,7 @@ impl<'a> WriteBuffer<'a> {
         let mut batch = WriteBatch::default();
 
         for record in self.buffer.iter() {
-            self.last_insert = self.last_insert.next();
+            self.last_insert = self.last_insert.next_id();
             batch.put_cf(&self.cf, self.last_insert.to_string(), record);
         }
 

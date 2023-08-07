@@ -1,4 +1,4 @@
-use vlseqid::id::BigID;
+use byte_counter::counter::ByteCounter;
 
 use crate::errors::{Error, Result};
 use crate::iterator::TopicIter;
@@ -13,7 +13,7 @@ pub trait Topic: Table {}
 
 pub struct TopicImpl<T> {
     pub table: TableImpl<T>,
-    pub next_insert: BigID,
+    pub next_insert: ByteCounter,
 }
 
 impl<T> TopicImpl<T>
@@ -23,7 +23,7 @@ where
     pub fn new(table: TableImpl<T>) -> Self {
         let mut topic = Self {
             table: table,
-            next_insert: BigID::new(Some(TOPIC_KEY_PREFIX.to_string())),
+            next_insert: ByteCounter::new_with_prefix(TOPIC_KEY_PREFIX.to_string()),
         };
         topic.seek_last();
 
@@ -49,7 +49,7 @@ where
             iter.next();
         }
 
-        self.next_insert = self.next_insert.next();
+        self.next_insert = self.next_insert.next_id();
     }
 
     pub fn append(&mut self, value: &Record) -> Result<SeqRecord> {
@@ -59,7 +59,7 @@ where
             .insert(key, value)
             .map_err(|err| Error::DbError(err))?;
 
-        self.next_insert = self.next_insert.next();
+        self.next_insert = self.next_insert.next_id();
         Ok(SeqRecord::new(self.next_insert.clone(), value.clone()))
     }
 

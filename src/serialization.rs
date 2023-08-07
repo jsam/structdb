@@ -1,6 +1,6 @@
 use crate::errors::{Error, Result};
+use byte_counter::counter::ByteCounter;
 use serde::{Deserialize, Serialize};
-use vlseqid::id::BigID;
 
 pub trait BinCode {
     fn to_bytes(&self) -> Result<Vec<u8>>
@@ -28,7 +28,7 @@ impl BinCode for &str {}
 
 impl BinCode for String {}
 
-impl BinCode for BigID {}
+impl BinCode for ByteCounter {}
 
 #[cfg(test)]
 mod tests {

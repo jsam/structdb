@@ -1,4 +1,4 @@
-use vlseqid::id::BigID;
+use byte_counter::counter::ByteCounter;
 
 use crate::{
     record::SeqRecord,
@@ -52,10 +52,10 @@ fn iter_checkpoint<T: Table>(name: &str, topic: &Box<&TopicImpl<T>>) -> String {
         Ok(value) => match value {
             Some(value) => {
                 let value = value.as_ref();
-                let value = String::from_utf8_lossy(value);
-                let from = BigID::from(value.as_ref());
+                let value = String::from_utf8_lossy(value).to_string();
+                let from = ByteCounter::from(&value);
                 if from.valid {
-                    from.next().to_string()
+                    from.next_id().to_string()
                 } else {
                     TOPIC_KEY_PREFIX.to_string()
                 }
@@ -115,7 +115,7 @@ where
         // TODO: Last insert should also be persisted so that when restarted, we continue inserting into the right place.
         let last_insert = self.topic.next_insert.clone();
         let checkpoint = iter_checkpoint(self.name.as_ref(), &self.topic);
-        let checkpoint = BigID::from(checkpoint.as_ref());
+        let checkpoint = ByteCounter::from(&checkpoint);
         last_insert.distance(&checkpoint)
     }
 }
