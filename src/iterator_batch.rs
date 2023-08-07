@@ -14,7 +14,7 @@ pub trait BatchIterator {
     fn tail_distance(&self) -> u128;
 }
 
-pub struct TopicIter<'a, T>
+pub struct IteratorBatch<'a, T>
 where
     T: Table + 'a,
 {
@@ -26,7 +26,7 @@ where
     _state: rocksdb::DBRawIterator<'a>,
 }
 
-impl<'a, T> TopicIter<'a, T>
+impl<'a, T> IteratorBatch<'a, T>
 where
     T: Table,
 {
@@ -67,7 +67,7 @@ fn iter_checkpoint<T: Table>(name: &str, topic: &Box<&TopicImpl<T>>) -> String {
     start_from
 }
 
-impl<'a, T> BatchIterator for TopicIter<'a, T>
+impl<'a, T> BatchIterator for IteratorBatch<'a, T>
 where
     T: Table,
 {

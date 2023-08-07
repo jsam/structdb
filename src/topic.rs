@@ -1,7 +1,8 @@
 use byte_counter::counter::ByteCounter;
 
 use crate::errors::{Error, Result};
-use crate::iterator::TopicIter;
+use crate::iterator_batch::IteratorBatch;
+use crate::iterator_single::IteratorSingle;
 use crate::record::{Record, SeqRecord};
 use crate::table::{Table, TableImpl};
 
@@ -63,8 +64,12 @@ where
         Ok(SeqRecord::new(self.next_insert.clone(), value.clone()))
     }
 
-    pub fn window(&'_ self, name: &str, batch_size: usize) -> TopicIter<'_, T> {
-        TopicIter::new(Box::new(self), name, batch_size)
+    pub fn window(&'_ self, name: &str, batch_size: usize) -> IteratorBatch<'_, T> {
+        IteratorBatch::new(Box::new(self), name, batch_size)
+    }
+
+    pub fn iter(&'_ self) -> IteratorSingle<'_, T> {
+        IteratorSingle::new(Box::new(self))
     }
 }
 
@@ -74,7 +79,7 @@ mod tests {
     use std::fs;
 
     use crate::{
-        builder::StructDB, caches::Caches, iterator::BatchIterator, record::SeqRecord,
+        builder::StructDB, caches::Caches, iterator_batch::BatchIterator, record::SeqRecord,
         serialization::BinCode, table::Table,
     };
 
@@ -307,6 +312,17 @@ mod tests {
             let batch = iter3.next().unwrap();
             assert!(batch.len() == 0);
             assert_eq!(iter.tail_distance(), 0);
+        }
+
+        {
+            let mut expected = 1;
+            for item in topic.iter() {
+                let record = item;
+                assert!(record.is_valid());
+                assert_eq!(record.key.to_u128(), expected);
+                println!("record: {:?}", record);
+                expected += 1;
+            }
         }
     }
 }
