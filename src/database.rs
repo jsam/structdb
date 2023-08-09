@@ -26,7 +26,7 @@ pub struct Database {
 
 impl Database {
     /// Creates a database object and corresponding filesystem elements.
-    pub fn open<P: AsRef<Path> + Clone, I: IntoIterator<Item = ColumnFamilyDescriptor>>(
+    pub fn open<P: AsRef<Path>, I: IntoIterator<Item = ColumnFamilyDescriptor>>(
         path: P,
         options: &mut rocksdb::Options,
         cfd: I,
@@ -34,12 +34,7 @@ impl Database {
         options.create_if_missing(true);
         options.create_missing_column_families(true);
 
-        let db = match rocksdb::DB::open_cf_descriptors(options, path.clone(), cfd) {
-            Ok(db) => db,
-            Err(_) => rocksdb::DB::open(options, path)?,
-        };
-
-        let db = Arc::new(db);
+        let db = Arc::new(rocksdb::DB::open_cf_descriptors(options, path, cfd)?);
 
         Ok(Database {
             raw: db,
@@ -47,8 +42,8 @@ impl Database {
         })
     }
 
-    pub fn list_cf(&self) -> RocksResult<Vec<String>> {
-        let result = rocksdb::DB::list_cf(&rocksdb::Options::default(), self.raw.path())?;
+    pub fn list_cf<P: AsRef<Path> + Clone>(path: P) -> RocksResult<Vec<String>> {
+        let result = rocksdb::DB::list_cf(&rocksdb::Options::default(), path)?;
         Ok(result)
     }
 
@@ -247,7 +242,10 @@ mod tests {
             let _ = rdb.create_cf("stream2");
             let _ = rdb.create_cf("stream3");
 
-            let received = rdb.list_cf().unwrap();
+            let received = Database::list_cf(rdb.raw.path()).unwrap();
+            assert_eq!(received, expected);
+
+            let received = Database::list_cf("test_list_cf.db").unwrap();
             assert_eq!(received, expected);
         }
 
@@ -277,7 +275,7 @@ mod tests {
 
             assert!(new_db.is_ok());
             let new_db = new_db.unwrap();
-            assert_eq!(new_db.list_cf().unwrap(), expected);
+            assert_eq!(Database::list_cf(new_db.raw.path()).unwrap(), expected);
         }
     }
 

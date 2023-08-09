@@ -80,7 +80,7 @@ mod tests {
 
     use crate::{
         builder::StructDB, caches::Caches, iterator_batch::BatchIterator, record::SeqRecord,
-        serialization::BinCode, table::Table,
+        serialization::BinCode, table::Table, database::Database,
     };
 
     use super::Topic;
@@ -123,7 +123,7 @@ mod tests {
         let _ = db.make_sharded_topic::<MyTopic>(&"shard1".to_string());
         let _ = db.make_sharded_topic::<MyTopic>(&"shard2".to_string());
 
-        let expected = db.db.list_cf().expect("list_cf failed");
+        let expected = Database::list_cf(db.db.raw.path()).expect("list_cf failed");
         assert_eq!(
             expected,
             vec!["default", "my-topic", "my-topic_shard1", "my-topic_shard2"]
