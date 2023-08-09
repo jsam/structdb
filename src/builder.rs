@@ -70,9 +70,11 @@ impl Builder {
     }
 
     pub fn build_all(mut self) -> Result<StructDB, rocksdb::Error> {
-        for cf in Database::list_cf(self.path.clone())? {
-            self.descriptors
-                .push(rocksdb::ColumnFamilyDescriptor::new(cf, Default::default()));
+        if self.path.exists() {
+            for cf in Database::list_cf(self.path.clone())? {
+                self.descriptors
+                    .push(rocksdb::ColumnFamilyDescriptor::new(cf, Default::default()));
+            }
         }
 
         self.build()
