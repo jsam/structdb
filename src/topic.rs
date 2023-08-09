@@ -79,8 +79,8 @@ mod tests {
     use std::fs;
 
     use crate::{
-        builder::StructDB, caches::Caches, iterator_batch::BatchIterator, record::SeqRecord,
-        serialization::BinCode, table::Table, database::Database,
+        builder::StructDB, caches::Caches, database::Database, iterator_batch::BatchIterator,
+        record::SeqRecord, serialization::BinCode, table::Table,
     };
 
     use super::Topic;
@@ -112,22 +112,37 @@ mod tests {
     #[test]
     fn test_topic_write_sharded() {
         let _ = fs::remove_dir_all("test_topic_write_sharded.db");
-        let db = StructDB::builder("test_topic_write_sharded.db", Caches::default())
-            .with_struct::<MyTopic>()
-            .build();
-        assert!(db.is_ok());
 
-        let db = db.unwrap();
-        let _ = db.make_topic::<MyTopic>();
-        let _ = db.make_sharded_topic::<MyTopic>(&"shard1".to_string());
-        let _ = db.make_sharded_topic::<MyTopic>(&"shard1".to_string());
-        let _ = db.make_sharded_topic::<MyTopic>(&"shard2".to_string());
+        {
+            let db = StructDB::builder("test_topic_write_sharded.db", Caches::default())
+                .with_struct::<MyTopic>()
+                .build();
+            assert!(db.is_ok());
 
-        let expected = Database::list_cf(db.db.raw.path()).expect("list_cf failed");
-        assert_eq!(
-            expected,
-            vec!["default", "my-topic", "my-topic_shard1", "my-topic_shard2"]
-        );
+            let db = db.unwrap();
+            let _ = db.make_topic::<MyTopic>();
+            let _ = db.make_sharded_topic::<MyTopic>(&"shard1".to_string());
+            let _ = db.make_sharded_topic::<MyTopic>(&"shard1".to_string());
+            let _ = db.make_sharded_topic::<MyTopic>(&"shard2".to_string());
+
+            let received = Database::list_cf(db.db.raw.path()).expect("list_cf failed");
+            assert_eq!(
+                received,
+                vec!["default", "my-topic", "my-topic_shard1", "my-topic_shard2"]
+            );
+        }
+        {
+            let db =
+                StructDB::builder("test_topic_write_sharded.db", Caches::default()).build_all();
+            assert!(db.is_ok());
+            let db = db.unwrap();
+
+            let received = db.db.list_cfamily().expect("list_cf failed");
+            assert_eq!(
+                received,
+                vec!["default", "my-topic", "my-topic_shard1", "my-topic_shard2"]
+            )
+        }
     }
 
     #[test]

@@ -69,6 +69,15 @@ impl Builder {
         self
     }
 
+    pub fn build_all(mut self) -> Result<StructDB, rocksdb::Error> {
+        for cf in Database::list_cf(self.path.clone())? {
+            self.descriptors
+                .push(rocksdb::ColumnFamilyDescriptor::new(cf, Default::default()));
+        }
+
+        self.build()
+    }
+
     pub fn with_struct<T>(mut self) -> Self
     where
         T: Table,

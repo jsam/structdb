@@ -42,8 +42,13 @@ impl Database {
         })
     }
 
-    pub fn list_cf<P: AsRef<Path> + Clone>(path: P) -> RocksResult<Vec<String>> {
+    pub fn list_cf<P: AsRef<Path>>(path: P) -> RocksResult<Vec<String>> {
         let result = rocksdb::DB::list_cf(&rocksdb::Options::default(), path)?;
+        Ok(result)
+    }
+
+    pub fn list_cfamily(&self) -> RocksResult<Vec<String>> {
+        let result = rocksdb::DB::list_cf(&rocksdb::Options::default(), self.raw.path())?;
         Ok(result)
     }
 
