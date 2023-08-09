@@ -26,7 +26,7 @@ pub struct Database {
 
 impl Database {
     /// Creates a database object and corresponding filesystem elements.
-    pub fn open<P: AsRef<Path>, I: IntoIterator<Item = ColumnFamilyDescriptor>>(
+    pub fn open<P: AsRef<Path> + Clone, I: IntoIterator<Item = ColumnFamilyDescriptor>>(
         path: P,
         options: &mut rocksdb::Options,
         cfd: I,
@@ -34,7 +34,12 @@ impl Database {
         options.create_if_missing(true);
         options.create_missing_column_families(true);
 
-        let db = Arc::new(rocksdb::DB::open_cf_descriptors(&options, path, cfd)?);
+        let db = match rocksdb::DB::open_cf_descriptors(options, path.clone(), cfd) {
+            Ok(db) => db,
+            Err(_) => rocksdb::DB::open(options, path)?,
+        };
+
+        let db = Arc::new(db);
 
         Ok(Database {
             raw: db,
