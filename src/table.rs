@@ -180,11 +180,26 @@ where
         db_contains_key(self.db.as_ref(), self.cf, key.as_ref(), &self.read_config)
     }
 
-    pub fn iterator(&'_ self, mode: rocksdb::IteratorMode) -> rocksdb::DBIterator<'_> {
+    fn iterator(&'_ self, mode: rocksdb::IteratorMode) -> rocksdb::DBIterator<'_> {
         let mut read_config = Default::default();
         T::read_options(&mut read_config);
 
         self.db.iterator_cf_opt(&self.cf, read_config, mode)
+    }
+
+    pub fn iter_start(&'_ self) -> rocksdb::DBIterator<'_> {
+        self.iterator(rocksdb::IteratorMode::Start)
+    }
+
+    pub fn iter_end(&'_ self) -> rocksdb::DBIterator<'_> {
+        self.iterator(rocksdb::IteratorMode::End)
+    }
+
+    pub fn iter_from(&'_ self, key: &[u8]) -> rocksdb::DBIterator<'_> {
+        self.iterator(rocksdb::IteratorMode::From(
+            key,
+            rocksdb::Direction::Forward,
+        ))
     }
 
     #[allow(unused)]
