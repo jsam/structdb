@@ -22,7 +22,7 @@ pub trait VersionProvider {
 pub struct DefaultVersionProvider;
 
 impl DefaultVersionProvider {
-    const DB_VERSION_KEY: &str = "weedb_version";
+    const DB_VERSION_KEY: &'static str = "structdb_version";
 }
 
 impl VersionProvider for DefaultVersionProvider {
